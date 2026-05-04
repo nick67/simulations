@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Προσομοίωση Ευθύγραμμης Κίνησης</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f3;
+    --text: #1a1a1a; --text2: #666;
+    --border: rgba(0,0,0,0.15); --border2: rgba(0,0,0,0.25);
+    --info-bg: #e6f1fb; --info-text: #185fa5; --info-border: #b5d4f4;
+    --danger-bg: #fcebeb; --danger-text: #a32d2d;
+    --radius: 8px; --radius-lg: 12px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1e; --bg2: #2a2a2a;
+      --text: #e8e8e8; --text2: #999;
+      --border: rgba(255,255,255,0.12); --border2: rgba(255,255,255,0.25);
+      --info-bg: #0c2a44; --info-text: #85b7eb; --info-border: #185fa5;
+      --danger-bg: #3a1a1a; --danger-text: #f09595;
+    }
+  }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 1.5rem 1rem;
+  }
+
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.25rem; text-align: center; }
+
+  .sim-wrap { width: 100%; max-width: 720px; }
+
+  .ctrl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+
+  .ctrl-box, .speed-box {
+    background: var(--bg2); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 10px 12px;
+  }
+  .speed-box { margin-bottom: 10px; }
+
+  .ctrl-label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .ctrl-row { display: flex; align-items: center; gap: 8px; }
+  .ctrl-row input[type=range] { flex: 1; accent-color: #378ADD; }
+  .ctrl-val { font-size: 13px; font-weight: 500; min-width: 52px; text-align: right; }
+
+  .stage-wrap {
+    background: var(--bg2); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 12px;
+    margin-bottom: 10px; cursor: crosshair; position: relative;
+  }
+
+  canvas { display: block; width: 100%; border-radius: 6px; }
+
+  .bottom-row { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; flex-wrap: wrap; }
+
+  .time-display {
+    background: var(--bg2); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 8px 16px;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .time-label { font-size: 12px; color: var(--text2); }
+  .time-val   { font-size: 22px; font-weight: 500; }
+
+  .vel-card {
+    background: var(--bg2); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 8px 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .vel-label { font-size: 12px; color: var(--text2); }
+  .vel-val   { font-size: 18px; font-weight: 500; }
+
+  .btn-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+
+  button {
+    padding: 6px 16px; border: 0.5px solid var(--border2);
+    border-radius: var(--radius); background: var(--bg); color: var(--text);
+    font-size: 13px; cursor: pointer; font-family: inherit; transition: background 0.15s;
+  }
+  button:hover  { background: var(--bg2); }
+  button:active { transform: scale(0.98); }
+  button.active  { background: var(--info-bg);  color: var(--info-text);  border-color: var(--info-border); }
+  button.toggled { color: var(--text2); border-style: dashed; }
+
+  .log-wrap {
+    background: var(--bg2); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 10px 12px;
+    max-height: 200px; overflow-y: auto;
+  }
+  .log-title {
+    font-size: 12px; color: var(--text2); margin-bottom: 6px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .col-toggle-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .col-toggle-label { font-size: 12px; color: var(--text2); }
+
+  .log-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .log-table th {
+    color: var(--text2); text-align: left; padding: 2px 6px;
+    border-bottom: 0.5px solid var(--border); font-weight: 400;
+  }
+  .log-table td { padding: 3px 6px; border-bottom: 0.5px solid var(--border); }
+  .col-v-h.hidden { display: none; }
+
+  @media (max-width: 480px) { .ctrl-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="sim-wrap">
+  <h1>Προσομοίωση Ευθύγραμμης Κίνησης</h1>
+
+  <div class="ctrl-grid">
+    <div class="ctrl-box">
+      <div class="ctrl-label">Αρχική ταχύτητα v₀ (m/s)</div>
+      <div class="ctrl-row">
+        <input type="range" id="v0" min="-15" max="15" step="0.5" value="0">
+        <span class="ctrl-val" id="v0-val">0.0</span>
+      </div>
+    </div>
+    <div class="ctrl-box">
+      <div class="ctrl-label">Γωνία κλίσης θ (°)</div>
+      <div class="ctrl-row">
+        <input type="range" id="angle" min="-30" max="30" step="1" value="0">
+        <span class="ctrl-val" id="angle-val">0°</span>
+      </div>
+    </div>
+    <div class="ctrl-box">
+      <div class="ctrl-label">Συντελεστής τριβής μ</div>
+      <div class="ctrl-row">
+        <input type="range" id="mu" min="0" max="0.8" step="0.01" value="0.1">
+        <span class="ctrl-val" id="mu-val">0.10</span>
+      </div>
+    </div>
+    <div class="ctrl-box">
+      <div class="ctrl-label">Μάζα m (kg)</div>
+      <div class="ctrl-row">
+        <input type="range" id="mass" min="0.5" max="10" step="0.5" value="2">
+        <span class="ctrl-val" id="mass-val">2.0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="speed-box">
+    <div class="ctrl-label">Ταχύτητα προσομοίωσης</div>
+    <div class="ctrl-row">
+      <input type="range" id="simspeed" min="0.05" max="1" step="0.05" value="1">
+      <span class="ctrl-val" id="simspeed-val">×1.00</span>
+    </div>
+  </div>
+
+  <div class="stage-wrap" id="stage-wrap">
+    <canvas id="canvas" height="170"></canvas>
+  </div>
+
+  <div class="bottom-row">
+    <div class="time-display">
+      <span class="time-label">t (s)</span>
+      <span class="time-val" id="disp-t">0.00</span>
+    </div>
+    <div class="vel-card" id="vel-card" style="display:none">
+      <span class="vel-label">v (m/s)</span>
+      <span class="vel-val" id="disp-v">0.00</span>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button id="btn-start" class="active">▶ Εκκίνηση</button>
+    <button id="btn-reset">↺ Επανέναρξη</button>
+    <button id="btn-tog-v" class="toggled">v κρυφή</button>
+    <button id="btn-fullscreen">⛶ Πλήρης οθόνη</button>
+    <button id="btn-log">📋 Καταγραφή κλικ</button>
+    <button id="btn-clear-log">Καθαρισμός πίνακα</button>
+  </div>
+
+  <div class="log-wrap">
+    <div class="log-title">
+      <span>Καταγεγραμμένες μετρήσεις <span style="color:var(--text2)">(κλικ στη σκηνή)</span></span>
+      <span id="log-count" style="font-weight:500">0 σημεία</span>
+    </div>
+    <div class="col-toggle-row">
+      <span class="col-toggle-label">Στήλη v:</span>
+      <button id="tog-v-log" class="toggled" style="padding:3px 10px;font-size:11px">κρυφή</button>
+    </div>
+    <table class="log-table">
+      <thead><tr>
+        <th>#</th><th>t (s)</th><th>x (m)</th>
+        <th class="col-v-h hidden">v (m/s)</th>
+      </tr></thead>
+      <tbody id="log-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+const G      = 9.81;
+
+let state    = {x:0, v:0, t:0, running:false, logMode:false};
+let logData  = [], animId = null, lastTime = null;
+let showVel  = false, showVLog = false;
+let simSpeed = 1.0;
+
+function getParams(){
+  return {
+    v0:    parseFloat(document.getElementById('v0').value),
+    angle: parseFloat(document.getElementById('angle').value),
+    mu:    parseFloat(document.getElementById('mu').value),
+    mass:  parseFloat(document.getElementById('mass').value)
+  };
+}
+
+function computeAccel(v, angle, mu, mass){
+  const rad    = angle * Math.PI / 180;
+  const Fg_x   = mass * G * Math.sin(rad);
+  const Fn     = mass * G * Math.cos(rad);
+  const Ff_max = mu * Fn;
+  if(Math.abs(v) < 0.001){
+    if(Math.abs(Fg_x) <= Ff_max) return 0;
+    return (Fg_x - Math.sign(Fg_x) * Ff_max) / mass;
+  }
+  return (Fg_x - Math.sign(v) * Ff_max) / mass;
+}
+
+function isFS(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+
+function resize(){
+  if(isFS()){
+    canvas.width  = window.screen.width;
+    canvas.height = window.screen.height;
+  } else {
+    canvas.width  = canvas.parentElement.offsetWidth - 24;
+    canvas.height = 170;
+  }
+}
+
+function isDark(){ return window.matchMedia('(prefers-color-scheme:dark)').matches; }
+
+/* Rounded rectangle helper */
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+function draw(){
+  const p    = getParams();
+  const W    = canvas.width, H = canvas.height;
+  const dark = isDark();
+  const fs   = isFS();
+  ctx.clearRect(0,0,W,H);
+
+  if(fs){ ctx.fillStyle='#111'; ctx.fillRect(0,0,W,H); }
+
+  const trackCol = dark||fs ? '#666' : '#999';
+  const tickCol  = dark||fs ? '#555' : '#bbb';
+  const textCol  = dark||fs ? '#ccc' : '#444';
+  const fontSize = fs ? 16 : 10;
+
+  const rad      = p.angle * Math.PI / 180;
+  const trackLen = W * 0.88;
+  const maxX     = 18;
+  const pxPerM   = (trackLen * 0.82) / (maxX * 2);
+  const centerY  = fs ? H * 0.55 : H/2 + 10;
+
+  ctx.save();
+  ctx.translate(W/2, centerY);
+  ctx.rotate(rad);
+
+  /* Track */
+  ctx.strokeStyle=trackCol; ctx.lineWidth=fs?3:2;
+  ctx.beginPath(); ctx.moveTo(-trackLen/2,0); ctx.lineTo(trackLen/2,0); ctx.stroke();
+
+  /* Ticks + labels */
+  ctx.strokeStyle=tickCol; ctx.lineWidth=1;
+  ctx.fillStyle=textCol; ctx.font=fontSize+'px system-ui,sans-serif'; ctx.textAlign='center';
+  for(let xi=-maxX; xi<=maxX; xi+=3){
+    const px=xi*pxPerM;
+    if(Math.abs(px)>trackLen/2-5) continue;
+    ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,fs?10:8); ctx.stroke();
+    ctx.fillText(xi, px, fs?26:20);
+  }
+
+  ctx.strokeStyle=dark||fs?'#888':'#aaa'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(0,6); ctx.stroke();
+  ctx.fillStyle=textCol; ctx.fillText('0',0,fs?26:20);
+
+  ctx.textAlign='right'; ctx.fillStyle=dark||fs?'#777':'#aaa';
+  ctx.font=fontSize+'px system-ui,sans-serif';
+  ctx.fillText('x (m)', trackLen/2, -6);
+
+  /* Object */
+  const objPx = Math.max(-trackLen/2+20, Math.min(trackLen/2-20, state.x*pxPerM));
+  const bw = fs?48:28, bh = fs?32:20;
+
+  ctx.strokeStyle='#378ADD'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(objPx,2); ctx.lineTo(objPx,0); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.save();
+  ctx.translate(objPx, -bh-(fs?28:16));
+  ctx.fillStyle='#185FA5';
+  ctx.font=(fs?16:11)+'px system-ui,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('x = '+state.x.toFixed(2)+' m', 0, 0);
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(objPx,-bh/2);
+  ctx.fillStyle='#378ADD'; ctx.strokeStyle='#185FA5'; ctx.lineWidth=1.5;
+  ctx.fillRect(-bw/2,-bh/2,bw,bh);
+  ctx.strokeRect(-bw/2,-bh/2,bw,bh);
+  ctx.fillStyle='#fff';
+  ctx.font=(fs?14:10)+'px system-ui,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('m',0,0);
+
+  if(state.running && Math.abs(state.v)>0.05){
+    const arrowLen=Math.min(fs?80:60, Math.abs(state.v)*4);
+    const dir=Math.sign(state.v);
+    const startX=dir*(bw/2+2);
+    ctx.strokeStyle='#639922'; ctx.fillStyle='#639922'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(startX,0); ctx.lineTo(startX+dir*arrowLen,0); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(startX+dir*arrowLen+dir*6,0);
+    ctx.lineTo(startX+dir*arrowLen-dir*5,-5);
+    ctx.lineTo(startX+dir*arrowLen-dir*5,5);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  ctx.restore();
+
+  /* ── Fullscreen overlays ── */
+  if(fs){
+    /* Chronometer — bottom centre */
+    const tStr = state.t.toFixed(2);
+    ctx.save();
+    roundRect(ctx, W/2-90, H-90, 180, 64, 12);
+    ctx.fillStyle='rgba(20,20,20,0.82)'; ctx.fill();
+    ctx.fillStyle='#aaa'; ctx.font='14px system-ui,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('t (s)', W/2, H-64);
+    ctx.fillStyle='#fff'; ctx.font='bold 36px system-ui,sans-serif';
+    ctx.fillText(tStr, W/2, H-30);
+    ctx.restore();
+
+    /* Slow motion badge — top left */
+    if(simSpeed < 1){
+      ctx.save();
+      roundRect(ctx, 14, 14, 110, 30, 7);
+      ctx.fillStyle='rgba(186,117,23,0.88)'; ctx.fill();
+      ctx.fillStyle='#fff'; ctx.font='bold 13px system-ui,sans-serif'; ctx.textAlign='left';
+      ctx.fillText('× '+simSpeed.toFixed(2)+' speed', 24, 33);
+      ctx.restore();
+    }
+  } else {
+    /* Normal mode slow motion badge */
+    if(simSpeed < 1){
+      ctx.save();
+      roundRect(ctx, 10, 10, 104, 26, 6);
+      ctx.fillStyle='rgba(186,117,23,0.88)'; ctx.fill();
+      ctx.fillStyle='#fff'; ctx.font='bold 11px system-ui,sans-serif'; ctx.textAlign='left';
+      ctx.fillText('× '+simSpeed.toFixed(2)+' speed', 18, 27);
+      ctx.restore();
+    }
+  }
+
+  document.getElementById('disp-t').textContent = state.t.toFixed(2);
+  document.getElementById('disp-v').textContent = state.v.toFixed(2);
+}
+
+function simStep(ts){
+  if(!state.running) return;
+  if(lastTime===null) lastTime=ts;
+  const realDt = Math.min((ts-lastTime)/1000, 0.05);
+  lastTime=ts;
+  const dt = realDt * simSpeed;
+
+  const p=getParams();
+  const a=computeAccel(state.v,p.angle,p.mu,p.mass);
+  const prevV=state.v;
+  state.v+=a*dt;
+
+  if(Math.abs(prevV)>0.001 && Math.sign(state.v)!==Math.sign(prevV)){
+    state.v=0;
+    if(computeAccel(0,p.angle,p.mu,p.mass)===0){
+      state.running=false;
+      document.getElementById('btn-start').textContent='▶ Εκκίνηση';
+      document.getElementById('btn-start').classList.add('active');
+    }
+  }
+
+  state.x+=state.v*dt; state.t+=dt;
+
+  if(Math.abs(state.x)>30){
+    state.running=false;
+    document.getElementById('btn-start').textContent='▶ Εκκίνηση';
+    document.getElementById('btn-start').classList.add('active');
+  }
+
+  draw();
+  if(state.running) animId=requestAnimationFrame(simStep);
+}
+
+function resetSim(){
+  if(animId) cancelAnimationFrame(animId);
+  animId=null; lastTime=null;
+  const p=getParams();
+  state={x:0,v:p.v0,t:0,running:false,logMode:state.logMode};
+  document.getElementById('btn-start').textContent='▶ Εκκίνηση';
+  document.getElementById('btn-start').classList.add('active');
+  draw();
+}
+
+function clearLog(){
+  logData=[];
+  document.getElementById('log-body').innerHTML='';
+  document.getElementById('log-count').textContent='0 σημεία';
+}
+
+function applyVelVis(){
+  document.getElementById('vel-card').style.display=showVel?'':'none';
+  const btn=document.getElementById('btn-tog-v');
+  btn.textContent=showVel?'v εμφανής':'v κρυφή';
+  btn.classList.toggle('toggled',!showVel);
+  btn.classList.toggle('active',showVel);
+}
+function applyVLogVis(){
+  document.querySelectorAll('.col-v-h').forEach(el=>el.classList.toggle('hidden',!showVLog));
+  const btn=document.getElementById('tog-v-log');
+  btn.textContent=showVLog?'εμφανής':'κρυφή';
+  btn.classList.toggle('toggled',!showVLog);
+  btn.classList.toggle('active',showVLog);
+}
+
+/* Fullscreen */
+document.getElementById('btn-fullscreen').addEventListener('click',function(){
+  const el=document.getElementById('stage-wrap');
+  if(!isFS()){
+    (el.requestFullscreen||el.webkitRequestFullscreen).call(el);
+  } else {
+    (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+  }
+});
+
+function onFSChange(){
+  document.getElementById('btn-fullscreen').textContent = isFS() ? '✕ Έξοδος' : '⛶ Πλήρης οθόνη';
+  setTimeout(()=>{ resize(); draw(); }, 60);
+}
+document.addEventListener('fullscreenchange', onFSChange);
+document.addEventListener('webkitfullscreenchange', onFSChange);
+
+/* Slow motion */
+document.getElementById('simspeed').addEventListener('input',function(){
+  simSpeed=parseFloat(this.value);
+  document.getElementById('simspeed-val').textContent='×'+simSpeed.toFixed(2);
+  if(!state.running) draw();
+});
+
+document.getElementById('btn-tog-v').addEventListener('click',()=>{showVel=!showVel;applyVelVis();});
+document.getElementById('tog-v-log').addEventListener('click',()=>{showVLog=!showVLog;applyVLogVis();});
+
+document.getElementById('btn-start').addEventListener('click',function(){
+  if(state.running){
+    state.running=false;
+    if(animId) cancelAnimationFrame(animId);
+    animId=null; lastTime=null;
+    this.textContent='▶ Συνέχεια'; this.classList.add('active');
+  } else {
+    if(state.t===0){const p=getParams();state.v=p.v0;}
+    state.running=true;
+    this.textContent='⏸ Παύση'; this.classList.remove('active');
+    lastTime=null; animId=requestAnimationFrame(simStep);
+  }
+});
+
+document.getElementById('btn-reset').addEventListener('click', resetSim);
+
+document.getElementById('btn-log').addEventListener('click',function(){
+  state.logMode=!state.logMode;
+  this.textContent       = state.logMode?'🔴 Ακύρωση καταγραφής':'📋 Καταγραφή κλικ';
+  this.style.background  = state.logMode?'var(--danger-bg)':'';
+  this.style.color       = state.logMode?'var(--danger-text)':'';
+  this.style.borderColor = state.logMode?'var(--danger-text)':'';
+});
+
+/* Clear log — only clears the table, does NOT reset simulation */
+document.getElementById('btn-clear-log').addEventListener('click', clearLog);
+
+canvas.addEventListener('click',function(){
+  if(!state.logMode) return;
+  logData.push({n:logData.length+1,t:state.t,x:state.x,v:state.v});
+  const tbody=document.getElementById('log-body');
+  const row=document.createElement('tr');
+  const last=logData[logData.length-1];
+  row.innerHTML=`<td>${last.n}</td><td>${last.t.toFixed(3)}</td><td>${last.x.toFixed(3)}</td><td class="col-v-h${showVLog?'':' hidden'}">${last.v.toFixed(3)}</td>`;
+  tbody.appendChild(row);
+  document.getElementById('log-count').textContent=logData.length+' σημεία';
+  document.querySelector('.log-wrap').scrollTop=9999;
+});
+
+['v0','angle','mu','mass'].forEach(id=>{
+  const el=document.getElementById(id);
+  const out=document.getElementById(id+'-val');
+  el.addEventListener('input',function(){
+    const val=parseFloat(this.value);
+    if(id==='v0') out.textContent=val.toFixed(1);
+    else if(id==='mu') out.textContent=val.toFixed(2);
+    else if(id==='mass') out.textContent=val.toFixed(1);
+    else out.textContent=val+'°';
+    if(!state.running) resetSim();
+  });
+});
+
+applyVelVis(); applyVLogVis();
+resize();
+window.addEventListener('resize',()=>{ resize(); draw(); });
+draw();
+</script>
+</body>
+</html>
