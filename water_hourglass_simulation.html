@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How a Water Hourglass Works — Torricelli's Law Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F4EC;
+    --paper-deep:#EFE9DA;
+    --ink:#1C2B33;
+    --ink-soft:#4B5A62;
+    --brass:#B8924F;
+    --brass-dark:#8C6B34;
+    --brass-light:#E3C381;
+    --water:#1F7A8C;
+    --water-light:#7FCBDC;
+    --water-deep:#0E4A57;
+    --sand:#D7A24A;
+    --sand-light:#F0C879;
+    --sand-deep:#A8732A;
+    --accent:#C1521B;
+    --line:#D8CFB8;
+    --good:#2E7D5B;
+    --radius-lg:18px;
+    --radius-md:12px;
+    --radius-sm:8px;
+    --shadow:0 10px 30px rgba(28,43,51,0.10);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 500px at 10% -10%, #fffdf6 0%, transparent 60%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    min-height:100vh;
+  }
+
+  ::selection{background:var(--water-light);color:var(--ink);}
+
+  /* ---------- HEADER ---------- */
+  header{
+    padding:28px 36px 18px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:24px;
+    flex-wrap:wrap;
+  }
+  .title-block .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-optical-sizing:auto;
+    font-weight:600;
+    font-size:clamp(26px,3.2vw,40px);
+    margin:0;
+    line-height:1.05;
+    letter-spacing:-0.01em;
+  }
+  h1 em{
+    font-style:italic;
+    color:var(--water-deep);
+  }
+  .subtitle{
+    font-size:15px;
+    color:var(--ink-soft);
+    max-width:560px;
+    margin-top:8px;
+    line-height:1.5;
+  }
+  .header-right{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+    text-align:right;
+    line-height:1.6;
+  }
+
+  /* ---------- LAYOUT ---------- */
+  main{
+    display:grid;
+    grid-template-columns:minmax(360px,1.15fr) minmax(340px,0.85fr);
+    gap:22px;
+    padding:24px 36px 40px;
+    align-items:start;
+  }
+  @media (max-width:980px){
+    main{grid-template-columns:1fr;}
+  }
+
+  .card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);
+  }
+
+  /* ---------- STAGE (hourglass) ---------- */
+  .stage{
+    padding:18px 18px 10px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .stage-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .mode-switch{
+    display:inline-flex;
+    background:var(--paper-deep);
+    border-radius:999px;
+    padding:4px;
+    gap:2px;
+    border:1px solid var(--line);
+  }
+  .mode-switch button{
+    border:none;
+    background:transparent;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    padding:9px 14px;
+    border-radius:999px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    transition:background .18s ease, color .18s ease;
+    white-space:nowrap;
+  }
+  .mode-switch button.active{
+    background:var(--ink);
+    color:#fff;
+  }
+  .mode-switch button:hover:not(.active){
+    background:#fff;
+    color:var(--ink);
+  }
+
+  .formula-toggle{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    font-family:'JetBrains Mono',monospace;
+    cursor:pointer;
+    user-select:none;
+  }
+  .formula-toggle input{accent-color:var(--accent);width:15px;height:15px;}
+
+  .canvas-wrap{
+    position:relative;
+    display:flex;
+    justify-content:center;
+    transform-style:preserve-3d;
+    transition:transform .7s cubic-bezier(.6,.1,.25,1);
+  }
+  .canvas-wrap.flipping{ transform:rotate(180deg); }
+  #glassCanvas{
+    width:100%;
+    max-width:430px;
+    height:auto;
+    display:block;
+  }
+
+  .stage-foot{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px;
+    padding:6px 4px 10px;
+  }
+  .readout{
+    background:var(--paper-deep);
+    border:1px solid var(--line);
+    border-radius:var(--radius-sm);
+    padding:8px 10px;
+    text-align:center;
+  }
+  .readout .label{
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.07em;
+    color:var(--ink-soft);
+    font-weight:700;
+  }
+  .readout .value{
+    font-family:'JetBrains Mono',monospace;
+    font-size:16px;
+    font-weight:700;
+    color:var(--ink);
+    margin-top:3px;
+  }
+
+  /* ---------- TRANSPORT ---------- */
+  .transport{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:4px 4px 4px;
+    flex-wrap:wrap;
+  }
+  .btn{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--ink);
+    padding:11px 16px;
+    border-radius:999px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .btn:hover{ box-shadow:0 4px 10px rgba(28,43,51,0.12); transform:translateY(-1px); }
+  .btn:active{ transform:translateY(0); }
+  .btn-primary{
+    background:var(--water-deep);
+    border-color:var(--water-deep);
+    color:#fff;
+  }
+  .btn-primary:hover{ background:#0c3e49; }
+  .btn-ghost{ background:transparent; }
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .panel{
+    padding:18px 20px;
+  }
+  .panel h2{
+    font-family:'Fraunces',serif;
+    font-size:16px;
+    font-weight:600;
+    margin:0 0 12px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .panel h2 .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--accent);
+    display:inline-block;
+  }
+
+  .control{
+    margin-bottom:16px;
+  }
+  .control:last-child{margin-bottom:0;}
+  .control-label{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:13px;
+    font-weight:600;
+    margin-bottom:7px;
+  }
+  .control-label .val{
+    font-family:'JetBrains Mono',monospace;
+    color:var(--water-deep);
+    font-weight:700;
+    font-size:12.5px;
+  }
+  input[type="range"]{
+    width:100%;
+    -webkit-appearance:none;
+    height:6px;
+    border-radius:999px;
+    background:linear-gradient(90deg,var(--water-light),var(--paper-deep));
+    outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:20px;height:20px;
+    border-radius:50%;
+    background:var(--water-deep);
+    border:3px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,0.3);
+    cursor:pointer;
+    margin-top:-7px;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:20px;height:20px;
+    border-radius:50%;
+    background:var(--water-deep);
+    border:3px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,0.3);
+    cursor:pointer;
+  }
+  .tick-labels{
+    display:flex;
+    justify-content:space-between;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    color:var(--ink-soft);
+    margin-top:4px;
+  }
+
+  /* graph */
+  #graphCanvas{ width:100%; height:150px; display:block; }
+
+  /* insight box */
+  .insight{
+    background:linear-gradient(180deg,#FFF8EC, var(--paper-deep));
+    border:1px solid var(--brass);
+    border-radius:var(--radius-md);
+    padding:14px 16px;
+    font-size:13.5px;
+    line-height:1.55;
+    color:var(--ink);
+  }
+  .insight .insight-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--accent);
+    font-weight:700;
+    display:block;
+    margin-bottom:6px;
+  }
+
+  footer{
+    padding:10px 36px 30px;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    font-family:'JetBrains Mono',monospace;
+    text-align:center;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .canvas-wrap{ transition:none; }
+    .btn{ transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <div class="eyebrow">Granular &amp; Fluid Flow · Live Simulation</div>
+    <h1>How a <em>Water</em> Hourglass Works</h1>
+    <div class="subtitle">A real hourglass uses sand — never water. Run the simulation below to see exactly why, by comparing how water and sand drain through the same narrow neck.</div>
+  </div>
+  <div class="header-right">
+    g = 9.8 m/s² · orifice ≈ mm scale<br>
+    Torricelli's Law: v&nbsp;=&nbsp;√(2gh)
+  </div>
+</header>
+
+<main>
+  <!-- STAGE -->
+  <section class="card stage">
+    <div class="stage-top">
+      <div class="mode-switch" id="modeSwitch">
+        <button data-mode="cone" class="active">Water · classic cone</button>
+        <button data-mode="horn">Water · ideal horn</button>
+        <button data-mode="sand">Sand</button>
+      </div>
+      <label class="formula-toggle">
+        <input type="checkbox" id="formulaToggle" checked>
+        show formulas
+      </label>
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="glassCanvas" width="460" height="640"></canvas>
+    </div>
+
+    <div class="transport">
+      <button class="btn btn-primary" id="playBtn">▶ &nbsp;Start</button>
+      <button class="btn" id="resetBtn">⟲ Reset</button>
+      <button class="btn" id="flipBtn">⇅ Flip glass</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-ghost" id="cycleBtn">Next mode →</button>
+    </div>
+
+    <div class="stage-foot">
+      <div class="readout">
+        <div class="label">Elapsed</div>
+        <div class="value" id="roTime">0:00.0</div>
+      </div>
+      <div class="readout">
+        <div class="label">Top level</div>
+        <div class="value" id="roTop">100%</div>
+      </div>
+      <div class="readout">
+        <div class="label">Flow speed v</div>
+        <div class="value" id="roV">0.00 m/s</div>
+      </div>
+      <div class="readout">
+        <div class="label">Flow rate Q</div>
+        <div class="value" id="roQ">0.0 cm³/s</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIDEBAR -->
+  <section class="sidebar">
+
+    <div class="card panel">
+      <h2><span class="dot"></span>Controls</h2>
+
+      <div class="control">
+        <div class="control-label"><span>Neck (orifice) diameter</span><span class="val" id="orificeVal">3.0 mm</span></div>
+        <input type="range" id="orificeSlider" min="2" max="14" step="0.2" value="6">
+        <div class="tick-labels"><span>narrow</span><span>wide</span></div>
+      </div>
+
+      <div class="control">
+        <div class="control-label"><span>Gravity g</span><span class="val" id="gravityVal">9.8 m/s² (Earth)</span></div>
+        <input type="range" id="gravitySlider" min="1.0" max="24.8" step="0.1" value="9.8">
+        <div class="tick-labels"><span>Moon 1.6</span><span>Earth 9.8</span><span>Jupiter 24.8</span></div>
+      </div>
+
+      <div class="control">
+        <div class="control-label"><span>Playback speed</span><span class="val" id="speedVal">1.0×</span></div>
+        <input type="range" id="speedSlider" min="0.25" max="6" step="0.25" value="1">
+        <div class="tick-labels"><span>slow</span><span>fast</span></div>
+      </div>
+    </div>
+
+    <div class="card panel">
+      <h2><span class="dot"></span>Top level vs. time</h2>
+      <canvas id="graphCanvas" width="380" height="150"></canvas>
+    </div>
+
+    <div class="card panel">
+      <h2><span class="dot"></span>What's happening</h2>
+      <div class="insight" id="insightBox">
+        <span class="insight-label">Classic cone · water</span>
+        Press start. Watch the level — it should fall fast at first, then slow down.
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<footer>Built for the classroom — adjust orifice size, gravity, and shape, then compare the three modes on the graph.</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- Physical constants (fixed glass geometry) ----------------
+  const H0 = 0.12;     // m, height of one bulb
+  const R0 = 0.05;     // m, max bulb radius
+  const SAND_K = 0.55; // calibration constant for constant sand flow rate
+
+  // ---------------- State ----------------
+  const state = {
+    mode: 'cone',        // 'cone' | 'horn' | 'sand'
+    running: false,
+    sTop: 1,              // fraction 0..1 of H0 filled in top bulb
+    sBottom: 0,
+    t: 0,
+    g: 9.8,
+    orifice: 6/50,         // r_neck as fraction of R0 (set from slider, mm -> fraction)
+    speed: 1,
+    lastV: 0,
+    lastQ: 0,
+    graph: []              // {t, sTop}
+  };
+
+  const modeNames = {cone:'Classic cone · water', horn:'Ideal horn · water', sand:'Sand'};
+  const modeOrder = ['cone','horn','sand'];
+
+  // ---------------- DOM ----------------
+  const glassCanvas = document.getElementById('glassCanvas');
+  const gctx = glassCanvas.getContext('2d');
+  const graphCanvas = document.getElementById('graphCanvas');
+  const grctx = graphCanvas.getContext('2d');
+  const canvasWrap = document.getElementById('canvasWrap');
+
+  const playBtn = document.getElementById('playBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const flipBtn = document.getElementById('flipBtn');
+  const cycleBtn = document.getElementById('cycleBtn');
+  const modeSwitch = document.getElementById('modeSwitch');
+  const formulaToggle = document.getElementById('formulaToggle');
+
+  const orificeSlider = document.getElementById('orificeSlider');
+  const orificeVal = document.getElementById('orificeVal');
+  const gravitySlider = document.getElementById('gravitySlider');
+  const gravityVal = document.getElementById('gravityVal');
+  const speedSlider = document.getElementById('speedSlider');
+  const speedVal = document.getElementById('speedVal');
+
+  const roTime = document.getElementById('roTime');
+  const roTop = document.getElementById('roTop');
+  const roV = document.getElementById('roV');
+  const roQ = document.getElementById('roQ');
+  const insightBox = document.getElementById('insightBox');
+
+  // ---------------- Geometry helpers ----------------
+  // radius fraction (of R0) at normalized height s in [0,1] from the neck
+  const R_NECK_FRAC_MIN = 0.05;
+  function neckFrac(){
+    // visual neck radius fraction is tied loosely to orifice slider, with a floor for visibility
+    return Math.max(R_NECK_FRAC_MIN, state.orifice * 0.9);
+  }
+  function radiusFraction(mode, s){
+    s = Math.min(1, Math.max(0, s));
+    const rn = neckFrac();
+    if(mode === 'horn'){
+      return rn + (1 - rn) * Math.pow(s, 0.25);
+    }
+    // cone & sand share the classic conical silhouette
+    return rn + (1 - rn) * s;
+  }
+
+  // ---------------- Physics ----------------
+  function physicsSubstep(dt){
+    if(state.sTop <= 0){
+      state.sTop = 0;
+      if(state.running){ state.running = false; updatePlayButton(); }
+      return;
+    }
+    const hTopPhys = state.sTop * H0;
+    const v = Math.sqrt(Math.max(0, 2 * state.g * hTopPhys));
+    const aRadius = state.orifice * R0;
+    const aArea = Math.PI * aRadius * aRadius;
+
+    let Q;
+    if(state.mode === 'sand'){
+      Q = SAND_K * aArea * Math.sqrt(state.g * H0);
+    } else {
+      Q = aArea * v;
+    }
+
+    const rTopFrac = radiusFraction(state.mode, state.sTop);
+    const rBotFrac = radiusFraction(state.mode, state.sBottom);
+    const Atop = Math.PI * Math.pow(R0 * rTopFrac, 2);
+    const Abot = Math.PI * Math.pow(R0 * rBotFrac, 2);
+
+    const dsTop = -(Q / (Atop * H0)) * dt;
+    const dsBot = (Q / (Abot * H0)) * dt;
+
+    state.sTop = Math.max(0, state.sTop + dsTop);
+    state.sBottom = Math.min(1, state.sBottom + dsBot);
+
+    state.lastV = v;
+    state.lastQ = Q;
+  }
+
+  function step(realDt){
+    if(!state.running) return;
+    let simDt = realDt * state.speed;
+    simDt = Math.min(simDt, 0.25); // guard against tab-switch jumps
+    const subSteps = Math.max(1, Math.ceil(simDt / 0.015));
+    const h = simDt / subSteps;
+    for(let i=0;i<subSteps;i++){
+      physicsSubstep(h);
+      if(state.sTop <= 0) break;
+    }
+    state.t += simDt;
+    state.graph.push({t: state.t, s: state.sTop});
+    if(state.graph.length > 1200) state.graph.shift();
+  }
+
+  // ---------------- Drawing: hourglass ----------------
+  const W = glassCanvas.width, H = glassCanvas.height;
+  const cx = W/2;
+  const neckY = H/2;
+  const bulbPxH = 230;          // pixel height representing H0
+  const R0px = 150;             // pixel radius representing R0
+  const topY0 = neckY - bulbPxH; // topmost point
+  const botY1 = neckY + bulbPxH; // bottommost point
+  const N = 40;
+
+  function profilePoints(mode, fromNeck){
+    // returns array of {y, r} from s=0 (neck) to s=1 (extreme), y measured upward offset
+    const pts = [];
+    for(let i=0;i<=N;i++){
+      const s = i/N;
+      const r = radiusFraction(mode, s) * R0px;
+      const y = s * bulbPxH;
+      pts.push({y, r});
+    }
+    return pts;
+  }
+
+  function drawBulbOutline(ctx, mode, direction){
+    // direction: -1 = top bulb (goes up from neck), +1 = bottom bulb (goes down)
+    const pts = profilePoints(mode);
+    ctx.beginPath();
+    ctx.moveTo(cx - pts[0].r, neckY + direction*pts[0].y);
+    for(let i=1;i<pts.length;i++){
+      ctx.lineTo(cx - pts[i].r, neckY + direction*pts[i].y);
+    }
+    for(let i=pts.length-1;i>=0;i--){
+      ctx.lineTo(cx + pts[i].r, neckY + direction*pts[i].y);
+    }
+    ctx.closePath();
+  }
+
+  function fillLevel(ctx, mode, direction, sLevel, fillStyle){
+    if(sLevel<=0.002) return;
+    const pts = profilePoints(mode);
+    const maxIdx = Math.min(N, Math.ceil(sLevel*N));
+    ctx.beginPath();
+    ctx.moveTo(cx - interpR(pts, sLevel), neckY + direction*sLevel*bulbPxH);
+    for(let i=maxIdx;i>=0;i--){
+      const s = i/N;
+      if(s>sLevel) continue;
+      ctx.lineTo(cx - pts[i].r, neckY + direction*pts[i].y);
+    }
+    ctx.lineTo(cx - pts[0].r, neckY);
+    ctx.lineTo(cx + pts[0].r, neckY);
+    for(let i=0;i<=maxIdx;i++){
+      const s = i/N;
+      if(s>sLevel) continue;
+      ctx.lineTo(cx + pts[i].r, neckY + direction*pts[i].y);
+    }
+    ctx.lineTo(cx + interpR(pts, sLevel), neckY + direction*sLevel*bulbPxH);
+    ctx.closePath();
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+  }
+  function interpR(pts, s){
+    const idx = s*N;
+    const i0 = Math.floor(idx), i1=Math.min(N,i0+1);
+    const f = idx-i0;
+    return pts[i0].r*(1-f) + pts[i1].r*f;
+  }
+
+  function drawGlass(){
+    gctx.clearRect(0,0,W,H);
+
+    // --- frame: brass caps & posts ---
+    gctx.save();
+    const postInset = 26;
+    gctx.fillStyle = '#00000010';
+    gctx.fillRect(0,0,0,0);
+
+    // posts
+    const postW = 10;
+    [cx - R0px - postInset, cx + R0px + postInset].forEach(px=>{
+      const grad = gctx.createLinearGradient(px-postW/2,0,px+postW/2,0);
+      grad.addColorStop(0,'#7a5a26');
+      grad.addColorStop(.5,'#d8b56e');
+      grad.addColorStop(1,'#7a5a26');
+      gctx.fillStyle = grad;
+      gctx.fillRect(px-postW/2, topY0-22, postW, (botY1-topY0)+44);
+    });
+
+    // brass discs top/bottom
+    function brassDisc(y){
+      const grad = gctx.createLinearGradient(0,y-14,0,y+14);
+      grad.addColorStop(0,'#f1d896');
+      grad.addColorStop(.5,'#b8924f');
+      grad.addColorStop(1,'#7a5a26');
+      gctx.fillStyle = grad;
+      roundRect(gctx, cx-(R0px+postInset+14), y-14, (R0px+postInset+14)*2, 28, 10);
+      gctx.fill();
+    }
+    brassDisc(topY0-22);
+    brassDisc(botY1+22);
+    gctx.restore();
+
+    // --- glass bulbs (outline + glassy fill) ---
+    [-1,1].forEach(direction=>{
+      gctx.save();
+      drawBulbOutline(gctx, state.mode, direction);
+      const glassGrad = gctx.createLinearGradient(cx-R0px,0,cx+R0px,0);
+      glassGrad.addColorStop(0,'rgba(255,255,255,0.55)');
+      glassGrad.addColorStop(0.18,'rgba(210,225,228,0.18)');
+      glassGrad.addColorStop(0.5,'rgba(255,255,255,0.08)');
+      glassGrad.addColorStop(0.82,'rgba(210,225,228,0.18)');
+      glassGrad.addColorStop(1,'rgba(255,255,255,0.55)');
+      gctx.fillStyle = glassGrad;
+      gctx.fill();
+      gctx.lineWidth = 2.5;
+      gctx.strokeStyle = 'rgba(140,160,165,0.55)';
+      gctx.stroke();
+      gctx.restore();
+    });
+
+    // --- fill levels (clip to bulb shape) ---
+    const isSand = state.mode === 'sand';
+    const topColor = isSand ? mkGrad(gctx,'#F0C879','#C68A35',-1) : mkGrad(gctx,'#7FCBDC','#1F7A8C',-1);
+    const botColor = isSand ? mkGrad(gctx,'#F0C879','#C68A35',1) : mkGrad(gctx,'#7FCBDC','#1F7A8C',1);
+
+    gctx.save();
+    drawBulbOutline(gctx, state.mode, -1);
+    gctx.clip();
+    fillLevel(gctx, state.mode, -1, state.sTop, topColor);
+    gctx.restore();
+
+    gctx.save();
+    drawBulbOutline(gctx, state.mode, 1);
+    gctx.clip();
+    fillLevel(gctx, state.mode, 1, state.sBottom, botColor);
+    gctx.restore();
+
+    // --- neck stream ---
+    drawStream();
+
+    // --- re-stroke outlines on top for crispness ---
+    [-1,1].forEach(direction=>{
+      gctx.save();
+      drawBulbOutline(gctx, state.mode, direction);
+      gctx.lineWidth = 2.5;
+      gctx.strokeStyle = 'rgba(120,140,146,0.55)';
+      gctx.stroke();
+      gctx.restore();
+    });
+
+    // --- formula annotations ---
+    if(formulaToggle.checked) drawAnnotations();
+  }
+
+  function mkGrad(ctx, light, dark, direction){
+    const y0 = direction<0 ? topY0 : neckY;
+    const y1 = direction<0 ? neckY : botY1;
+    const g = ctx.createLinearGradient(0,y0,0,y1);
+    if(direction<0){
+      g.addColorStop(0, dark);
+      g.addColorStop(1, light);
+    } else {
+      g.addColorStop(0, light);
+      g.addColorStop(1, dark);
+    }
+    return g;
+  }
+
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  // falling particles through the neck
+  let particles = [];
+  let spawnAcc = 0;
+  function drawStream(){
+    const rn = neckFrac()*R0px;
+    if(state.mode === 'sand'){
+      // spawn grains based on flow
+      spawnAcc += state.running ? state.lastQ*4e6*0.016 : 0; // arbitrary scale for visual density
+      while(spawnAcc > 1){
+        spawnAcc -= 1;
+        particles.push({
+          x: cx + (Math.random()-0.5)*rn*1.2,
+          y: neckY - 4,
+          vy: 60 + Math.random()*40,
+          life: 1
+        });
+      }
+      const floorY = neckY + state.sBottom*bulbPxH;
+      gctx.fillStyle = '#8C6B34';
+      particles.forEach(p=>{
+        p.y += p.vy*0.016;
+      });
+      particles = particles.filter(p=> p.y < floorY+6);
+      particles.forEach(p=>{
+        gctx.beginPath();
+        gctx.arc(p.x, Math.min(p.y, floorY), 1.6, 0, Math.PI*2);
+        gctx.fill();
+      });
+    } else {
+      // continuous stream, width modulated by velocity
+      const vNorm = Math.min(1, state.lastV / 1.8);
+      const w = Math.max(1.5, rn*0.55*(0.4+0.6*vNorm));
+      const floorY = neckY + state.sBottom*bulbPxH;
+      if(state.running && state.sTop>0){
+        const grad = gctx.createLinearGradient(0,neckY-6,0,floorY);
+        grad.addColorStop(0,'rgba(127,203,220,0.95)');
+        grad.addColorStop(1,'rgba(31,122,140,0.85)');
+        gctx.fillStyle = grad;
+        gctx.fillRect(cx-w/2, neckY-6, w, Math.max(0,floorY-(neckY-6)));
+        // small splash
+        gctx.beginPath();
+        gctx.ellipse(cx, floorY, w*1.8, 3, 0, 0, Math.PI*2);
+        gctx.fillStyle = 'rgba(255,255,255,0.5)';
+        gctx.fill();
+      }
+    }
+  }
+
+  function drawAnnotations(){
+    gctx.save();
+    gctx.font = '600 13px JetBrains Mono, monospace';
+    gctx.fillStyle = '#C1521B';
+    gctx.strokeStyle = 'rgba(193,82,27,0.55)';
+    gctx.lineWidth = 1.4;
+    gctx.setLineDash([4,3]);
+
+    // h indicator on top bulb
+    const hY = neckY - state.sTop*bulbPxH;
+    gctx.beginPath();
+    gctx.moveTo(cx+R0px+34, neckY);
+    gctx.lineTo(cx+R0px+34, hY);
+    gctx.stroke();
+    gctx.setLineDash([]);
+    gctx.beginPath();
+    gctx.moveTo(cx+R0px+28, neckY); gctx.lineTo(cx+R0px+40, neckY);
+    gctx.moveTo(cx+R0px+28, hY); gctx.lineTo(cx+R0px+40, hY);
+    gctx.stroke();
+    gctx.save();
+    gctx.translate(cx+R0px+50, (neckY+hY)/2);
+    gctx.rotate(-Math.PI/2);
+    gctx.textAlign='center';
+    gctx.fillText('h', 0, 0);
+    gctx.restore();
+
+    // formula near neck
+    gctx.textAlign = 'left';
+    const label = state.mode==='sand'
+      ? 'Q = const  (no h dependence)'
+      : 'v = √(2gh)';
+    gctx.fillText(label, cx+18, neckY+34);
+
+    gctx.restore();
+  }
+
+  // ---------------- Drawing: graph ----------------
+  function drawGraph(){
+    const w = graphCanvas.width, h = graphCanvas.height;
+    grctx.clearRect(0,0,w,h);
+    const padL=30, padR=8, padT=10, padB=20;
+    const plotW = w-padL-padR, plotH = h-padT-padB;
+
+    // gridlines
+    grctx.strokeStyle = '#E5DFCD';
+    grctx.lineWidth=1;
+    grctx.font = '10px JetBrains Mono, monospace';
+    grctx.fillStyle = '#7C8A90';
+    for(let i=0;i<=4;i++){
+      const y = padT + plotH*i/4;
+      grctx.beginPath(); grctx.moveTo(padL,y); grctx.lineTo(w-padR,y); grctx.stroke();
+      grctx.fillText(Math.round(100-(i*25))+'%', 2, y+3);
+    }
+
+    if(state.graph.length<2){
+      grctx.fillStyle = '#9aa6ab';
+      grctx.fillText('press start to plot the curve', padL+8, padT+plotH/2);
+      return;
+    }
+    const tMax = Math.max(state.graph[state.graph.length-1].t, 1);
+
+    grctx.beginPath();
+    grctx.strokeStyle = state.mode==='sand' ? '#C68A35' : '#1F7A8C';
+    grctx.lineWidth = 2.5;
+    state.graph.forEach((p,i)=>{
+      const x = padL + (p.t/tMax)*plotW;
+      const y = padT + (1-p.s)*plotH;
+      if(i===0) grctx.moveTo(x,y); else grctx.lineTo(x,y);
+    });
+    grctx.stroke();
+
+    // ideal-linear reference (dashed)
+    grctx.beginPath();
+    grctx.setLineDash([4,3]);
+    grctx.strokeStyle = '#B8B0A0';
+    grctx.lineWidth=1.4;
+    grctx.moveTo(padL, padT);
+    grctx.lineTo(padL+plotW, padT+plotH);
+    grctx.stroke();
+    grctx.setLineDash([]);
+
+    grctx.fillStyle = '#9aa6ab';
+    grctx.fillText('time →', w-padR-32, h-4);
+  }
+
+  // ---------------- UI sync ----------------
+  function updatePlayButton(){
+    playBtn.innerHTML = state.running ? '⏸ &nbsp;Pause' : (state.sTop<=0 ? '↻ &nbsp;Restart' : '▶ &nbsp;Start');
+  }
+
+  function fmtTime(t){
+    const m = Math.floor(t/60);
+    const s = (t%60).toFixed(1).padStart(4,'0');
+    return m+':'+s;
+  }
+
+  function updateReadouts(){
+    roTime.textContent = fmtTime(state.t);
+    roTop.textContent = Math.round(state.sTop*100)+'%';
+    if(state.mode==='sand'){
+      roV.textContent = '—';
+    } else {
+      roV.textContent = state.lastV.toFixed(2)+' m/s';
+    }
+    roQ.textContent = (state.lastQ*1e6).toFixed(1)+' cm³/s';
+  }
+
+  const insights = {
+    cone: "Press start: with the classic two-cone shape, the level falls quickly at first and crawls near the end. That's Torricelli's Law — exit speed v = √(2gh) depends on how deep the water is, so the flow slows as the column drains. Look at the curve bending away from the dashed 'ideal' line.",
+    horn: "This chamber flares out near the neck (radius ∝ h^¼) instead of being a simple cone. That extra cross-section exactly cancels the √h slow-down from Torricelli's Law, so the level falls in a straight line — a true linear clock. Real glass like this is extremely hard to blow, which is part of why it was never practical.",
+    sand: "Sand doesn't obey Torricelli's Law at all. Once the grain column is more than a few grain-diameters deep, friction carries most of the weight sideways into the walls (the Janssen effect) — so the pressure at the opening, and therefore the flow rate, stays constant no matter how much sand remains above. That's the real reason hourglasses are filled with sand, not water: any simple cone shape already gives a perfectly straight, reliable clock."
+  };
+  function updateInsight(){
+    insightBox.innerHTML = '<span class="insight-label">'+modeNames[state.mode]+'</span>'+insights[state.mode];
+  }
+
+  // ---------------- Controls wiring ----------------
+  function setMode(mode){
+    state.mode = mode;
+    [...modeSwitch.children].forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
+    resetSim(false);
+    updateInsight();
+  }
+  modeSwitch.addEventListener('click', e=>{
+    const btn = e.target.closest('button[data-mode]');
+    if(btn) setMode(btn.dataset.mode);
+  });
+  cycleBtn.addEventListener('click', ()=>{
+    const idx = modeOrder.indexOf(state.mode);
+    setMode(modeOrder[(idx+1)%modeOrder.length]);
+  });
+
+  function resetSim(keepRunning){
+    state.sTop = 1;
+    state.sBottom = 0;
+    state.t = 0;
+    state.graph = [];
+    particles = [];
+    spawnAcc = 0;
+    state.running = !!keepRunning;
+    updatePlayButton();
+  }
+
+  playBtn.addEventListener('click', ()=>{
+    if(state.sTop<=0){ resetSim(true); return; }
+    state.running = !state.running;
+    updatePlayButton();
+  });
+  resetBtn.addEventListener('click', ()=> resetSim(false));
+  flipBtn.addEventListener('click', ()=>{
+    const tmp = state.sTop;
+    state.sTop = state.sBottom > 0.02 ? state.sBottom : 1;
+    state.sBottom = state.sBottom > 0.02 ? tmp : 0;
+    state.t = 0;
+    state.graph = [];
+    particles = [];
+    state.running = false;
+    updatePlayButton();
+    canvasWrap.classList.add('flipping');
+    setTimeout(()=>canvasWrap.classList.remove('flipping'), 700);
+  });
+
+  orificeSlider.addEventListener('input', ()=>{
+    const mm = parseFloat(orificeSlider.value);
+    state.orifice = (mm/2/1000) / R0; // slider gives diameter in mm -> radius fraction of R0
+    orificeVal.textContent = mm.toFixed(1)+' mm';
+  });
+  orificeSlider.dispatchEvent(new Event('input'));
+
+  gravitySlider.addEventListener('input', ()=>{
+    const g = parseFloat(gravitySlider.value);
+    state.g = g;
+    let name = '';
+    if(Math.abs(g-1.62)<0.3) name=' (Moon)';
+    else if(Math.abs(g-3.71)<0.3) name=' (Mars)';
+    else if(Math.abs(g-9.8)<0.3) name=' (Earth)';
+    else if(Math.abs(g-24.8)<0.3) name=' (Jupiter)';
+    gravityVal.textContent = g.toFixed(1)+' m/s²'+name;
+  });
+  gravitySlider.dispatchEvent(new Event('input'));
+
+  speedSlider.addEventListener('input', ()=>{
+    state.speed = parseFloat(speedSlider.value);
+    speedVal.textContent = state.speed.toFixed(2).replace(/0$/,'').replace(/\.$/,'') + '×';
+  });
+  speedSlider.dispatchEvent(new Event('input'));
+
+  // ---------------- Main loop ----------------
+  let lastTs = null;
+  function frame(ts){
+    if(lastTs==null) lastTs = ts;
+    const dt = Math.min(0.05, (ts-lastTs)/1000);
+    lastTs = ts;
+    step(dt);
+    drawGlass();
+    drawGraph();
+    updateReadouts();
+    requestAnimationFrame(frame);
+  }
+  updatePlayButton();
+  updateInsight();
+  requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>

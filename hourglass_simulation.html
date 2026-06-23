@@ -1,0 +1,195 @@
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;">Interactive hourglass simulation comparing constant-rate sand flow to decelerating water flow under Torricelli's law</h2>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 1rem;">
+  <div style="display:flex;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;">
+    <button id="mode-sand" style="border:none;border-radius:0;padding:8px 16px;">Sand</button>
+    <button id="mode-water" style="border:none;border-radius:0;padding:8px 16px;">Water</button>
+  </div>
+  <button id="play-btn" style="margin-left:auto;"><i class="ti ti-player-play" aria-hidden="true" style="vertical-align:-3px;margin-right:4px;"></i>Play</button>
+  <button id="reset-btn"><i class="ti ti-refresh" aria-hidden="true" style="vertical-align:-3px;margin-right:4px;"></i>Reset</button>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;margin:0 0 1.5rem;">
+  <label style="font-size:14px;color:var(--color-text-secondary);white-space:nowrap;">Orifice size</label>
+  <input type="range" id="k-slider" min="5" max="40" value="15" style="flex:1;" />
+  <span id="k-out" style="font-size:14px;font-weight:500;min-width:36px;text-align:right;">15%</span>
+</div>
+
+<svg width="100%" viewBox="0 0 680 540" role="img" style="display:block;">
+<title>Hourglass cross-section</title>
+<desc>Animated cross section of an hourglass showing sand or water draining from the top chamber to the bottom chamber through a narrow neck</desc>
+<defs>
+<clipPath id="topClip"><path d="M210,60 L470,60 L350,260 L330,260 Z"/></clipPath>
+<clipPath id="bottomClip"><path d="M330,300 L350,300 L470,500 L210,500 Z"/></clipPath>
+</defs>
+<path d="M210,60 L470,60 L350,260 L350,300 L470,500 L210,500 L330,300 L330,260 Z" fill="none" stroke="var(--t)" stroke-width="1.5"/>
+<rect id="top-fill" x="190" y="60" width="310" height="0" clip-path="url(#topClip)" fill="#BA7517"/>
+<rect id="bottom-fill" x="190" y="500" width="310" height="0" clip-path="url(#bottomClip)" fill="#BA7517"/>
+<g id="grains"></g>
+<line x1="205" y1="50" x2="475" y2="50" stroke="var(--t)" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+<line x1="205" y1="510" x2="475" y2="510" stroke="var(--t)" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+</svg>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:1rem 0;">
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:1rem;">
+    <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 4px;">Elapsed time</p>
+    <p style="font-size:24px;font-weight:500;margin:0;" id="time-out">0.0s</p>
+  </div>
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:1rem;">
+    <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 4px;">Remaining</p>
+    <p style="font-size:24px;font-weight:500;margin:0;" id="frac-out">100%</p>
+  </div>
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:1rem;">
+    <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 4px;">Flow rate law</p>
+    <p style="font-size:16px;font-weight:500;margin:0;" id="law-out">Constant</p>
+  </div>
+</div>
+
+<div style="margin:1.5rem 0 0;">
+  <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 6px;">Remaining fraction vs. time</p>
+  <canvas id="chart" width="680" height="160" style="width:100%;height:160px;display:block;"></canvas>
+</div>
+
+<script>
+(function(){
+  const topFill=document.getElementById('top-fill');
+  const bottomFill=document.getElementById('bottom-fill');
+  const grains=document.getElementById('grains');
+  const playBtn=document.getElementById('play-btn');
+  const resetBtn=document.getElementById('reset-btn');
+  const modeSandBtn=document.getElementById('mode-sand');
+  const modeWaterBtn=document.getElementById('mode-water');
+  const kSlider=document.getElementById('k-slider');
+  const kOut=document.getElementById('k-out');
+  const timeOut=document.getElementById('time-out');
+  const fracOut=document.getElementById('frac-out');
+  const lawOut=document.getElementById('law-out');
+  const canvas=document.getElementById('chart');
+  const ctx=canvas.getContext('2d');
+
+  let f=1, t=0, playing=false, mode='sand', lastTs=null, grainTimer=0, points=[];
+  const topH=200, botH=200;
+
+  function kVal(){ return kSlider.value/100; }
+
+  function setMode(m){
+    mode=m;
+    modeSandBtn.style.background = m==='sand' ? 'var(--color-background-info)' : 'transparent';
+    modeSandBtn.style.color = m==='sand' ? 'var(--color-text-info)' : 'var(--color-text-primary)';
+    modeWaterBtn.style.background = m==='water' ? 'var(--color-background-info)' : 'transparent';
+    modeWaterBtn.style.color = m==='water' ? 'var(--color-text-info)' : 'var(--color-text-primary)';
+    lawOut.textContent = m==='sand' ? 'Constant' : 'Torricelli (\u221Ah)';
+    topFill.setAttribute('fill', m==='sand' ? '#BA7517' : '#378ADD');
+    bottomFill.setAttribute('fill', m==='sand' ? '#BA7517' : '#378ADD');
+    reset();
+  }
+
+  function reset(){
+    f=1; t=0; playing=false; grainTimer=0; points=[];
+    grains.innerHTML='';
+    render();
+    drawChart();
+    playBtn.innerHTML='<i class="ti ti-player-play" aria-hidden="true" style="vertical-align:-3px;margin-right:4px;"></i>Play';
+  }
+
+  function render(){
+    const ySurface = 60 + topH*(1-f);
+    topFill.setAttribute('y', ySurface);
+    topFill.setAttribute('height', Math.max(0,260-ySurface));
+    const pileH = botH*(1-f);
+    bottomFill.setAttribute('y', 500-pileH);
+    bottomFill.setAttribute('height', Math.max(0,pileH));
+    timeOut.textContent = t.toFixed(1)+'s';
+    fracOut.textContent = Math.round(f*100)+'%';
+  }
+
+  function spawnGrain(){
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    const x=340+(Math.random()*8-4);
+    c.setAttribute('cx',x);
+    c.setAttribute('cy',270);
+    c.setAttribute('r', mode==='sand'?2:3);
+    c.setAttribute('fill', mode==='sand'?'#854F0B':'#185FA5');
+    c.setAttribute('opacity', mode==='sand'?'0.9':'0.6');
+    grains.appendChild(c);
+    const targetY = 500-(botH*(1-f))-6;
+    const dur=400;
+    const start=performance.now();
+    function step(ts){
+      const p=Math.min(1,(ts-start)/dur);
+      c.setAttribute('cy', 270+(targetY-270)*p);
+      if(p<1 && c.parentNode) requestAnimationFrame(step);
+      else if(c.parentNode) c.remove();
+    }
+    requestAnimationFrame(step);
+  }
+
+  function drawChart(){
+    const w=canvas.width,h=canvas.height;
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle='rgba(128,128,128,0.3)';
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(40,10); ctx.lineTo(40,h-24); ctx.lineTo(w-10,h-24);
+    ctx.stroke();
+    ctx.fillStyle='rgba(128,128,128,0.7)';
+    ctx.font='11px sans-serif';
+    ctx.fillText('1.0',10,16);
+    ctx.fillText('0.0',16,h-20);
+    if(points.length<2) return;
+    const maxT=Math.max(points[points.length-1].t*1.05, 5);
+    ctx.strokeStyle = mode==='sand' ? '#BA7517' : '#378ADD';
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    points.forEach((pt,i)=>{
+      const x=40+(pt.t/maxT)*(w-50);
+      const y=10+(1-pt.f)*(h-34);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  }
+
+  let lastChartT=-1;
+  function loop(ts){
+    if(!playing){ lastTs=null; return; }
+    if(lastTs===null) lastTs=ts;
+    const dt=Math.min(0.05,(ts-lastTs)/1000);
+    lastTs=ts;
+    const k=kVal();
+    let dfdt;
+    if(mode==='sand') dfdt=-k;
+    else dfdt=-k*Math.sqrt(Math.max(f,0));
+    f=Math.max(0,f+dfdt*dt);
+    if(f<0.005) f=0;
+    t+=dt;
+    if(t-lastChartT>0.1){ points.push({t,f}); lastChartT=t; }
+
+    grainTimer+=dt;
+    const flowFactor = mode==='sand'?1:Math.sqrt(Math.max(f,0.02));
+    const spawnInterval = 0.5/(k*4*flowFactor+0.01);
+    if(f>0.001 && grainTimer>spawnInterval){ grainTimer=0; spawnGrain(); }
+
+    render();
+    drawChart();
+
+    if(f<=0){ playing=false; playBtn.innerHTML='<i class="ti ti-player-play" aria-hidden="true" style="vertical-align:-3px;margin-right:4px;"></i>Play'; return; }
+    requestAnimationFrame(loop);
+  }
+
+  playBtn.addEventListener('click', ()=>{
+    if(f<=0) reset();
+    playing=!playing;
+    if(playing){
+      playBtn.innerHTML='<i class="ti ti-player-pause" aria-hidden="true" style="vertical-align:-3px;margin-right:4px;"></i>Pause';
+      requestAnimationFrame(loop);
+    } else {
+      playBtn.innerHTML='<i class="ti ti-player-play" aria-hidden="true" style="vertical-align:-3px;margin-right:4px;"></i>Play';
+    }
+  });
+  resetBtn.addEventListener('click', reset);
+  modeSandBtn.addEventListener('click', ()=>setMode('sand'));
+  modeWaterBtn.addEventListener('click', ()=>setMode('water'));
+  kSlider.addEventListener('input', ()=>{ kOut.textContent=kSlider.value+'%'; });
+
+  setMode('sand');
+})();
+</script>

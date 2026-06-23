@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hourglass — Granular Flow Lab</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --bg:#15120F;
+  --panel:#1F1A14;
+  --panel-light:#2A231A;
+  --line:#3A3024;
+  --brass:#C2A14D;
+  --brass-bright:#EAD08A;
+  --brass-dim:#8A6F35;
+  --glass-edge:rgba(214,228,232,0.35);
+  --glass-fill:rgba(180,205,210,0.05);
+  --sand-1:#D9A24B;
+  --sand-2:#E8B768;
+  --sand-3:#B97F33;
+  --ink:#EFE6D3;
+  --ink-dim:#A99C82;
+  --teal:#6FAE9A;
+  --rust:#B0563B;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(ellipse at 50% -10%, #221C14 0%, var(--bg) 55%);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  padding:28px 18px 60px;
+}
+
+.wrap{max-width:1180px;margin:0 auto;}
+
+/* ---------- Header / plaque ---------- */
+header{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  flex-wrap:wrap;gap:14px;
+  border-bottom:1px solid var(--line);
+  padding-bottom:16px;margin-bottom:22px;
+}
+.title-block{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;}
+h1{
+  font-family:'Fraunces',serif;
+  font-weight:600;
+  font-size:clamp(28px,4vw,40px);
+  letter-spacing:0.3px;
+  margin:0;
+  color:var(--brass-bright);
+}
+.subtitle{
+  font-size:12.5px;letter-spacing:1.6px;text-transform:uppercase;
+  color:var(--ink-dim);font-weight:500;
+}
+.meta-tag{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;color:var(--brass-dim);
+  border:1px solid var(--line);
+  border-radius:3px;padding:3px 8px;
+}
+
+/* ---------- Layout ---------- */
+.main-grid{
+  display:grid;
+  grid-template-columns:minmax(280px,380px) 1fr;
+  gap:20px;
+  align-items:start;
+}
+@media (max-width:880px){
+  .main-grid{grid-template-columns:1fr;}
+}
+
+.panel{
+  background:linear-gradient(180deg,var(--panel-light),var(--panel));
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:18px;
+}
+.panel-title{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;letter-spacing:1.4px;text-transform:uppercase;
+  color:var(--brass);
+  margin:0 0 14px 0;
+  display:flex;align-items:center;gap:8px;
+}
+.panel-title::after{
+  content:'';flex:1;height:1px;background:var(--line);
+}
+
+/* ---------- Hourglass viz panel ---------- */
+.viz-panel{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.viz-stage{position:relative;width:100%;display:flex;justify-content:center;}
+#hourglassCanvas{
+  width:100%;max-width:340px;height:auto;
+  display:block;
+  filter:drop-shadow(0 8px 18px rgba(0,0,0,0.45));
+  transition:transform 0.7s cubic-bezier(.5,-0.2,.5,1.2);
+}
+.flipping{transform:rotate(180deg);}
+
+.viz-controls-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%;}
+
+.btn{
+  font-family:'Inter',sans-serif;
+  font-weight:600;font-size:13px;
+  letter-spacing:0.3px;
+  padding:9px 16px;
+  border-radius:6px;
+  border:1px solid var(--brass-dim);
+  background:linear-gradient(180deg,#3A3020,#241D14);
+  color:var(--brass-bright);
+  cursor:pointer;
+  transition:filter 0.15s, transform 0.1s;
+}
+.btn:hover{filter:brightness(1.25);}
+.btn:active{transform:translateY(1px);}
+.btn.secondary{
+  border-color:var(--line);
+  color:var(--ink-dim);
+  background:linear-gradient(180deg,#241F18,#1B170F);
+}
+.btn.secondary:hover{color:var(--ink);}
+
+.gauge-row{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:4px;}
+#gaugeCanvas{width:150px;height:96px;}
+.gauge-readout{text-align:left;}
+.gauge-readout .big{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:26px;font-weight:600;color:var(--sand-2);
+  line-height:1;
+}
+.gauge-readout .lbl{
+  font-size:10.5px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--ink-dim);margin-top:4px;
+}
+
+/* ---------- Controls panel ---------- */
+.control{margin-bottom:18px;}
+.control:last-child{margin-bottom:0;}
+.control-label{
+  display:flex;justify-content:space-between;align-items:baseline;
+  font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;
+}
+.control-label .val{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:12.5px;color:var(--sand-2);font-weight:500;
+}
+.control-hint{font-size:11px;color:var(--ink-dim);margin-top:5px;line-height:1.5;}
+
+input[type=range]{
+  -webkit-appearance:none;width:100%;height:4px;border-radius:2px;
+  background:var(--line);outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--brass-bright), var(--brass-dim));
+  border:1px solid #6b5526;
+  box-shadow:0 0 0 3px rgba(194,161,77,0.12);
+  cursor:pointer;
+}
+input[type=range]::-moz-range-thumb{
+  width:16px;height:16px;border-radius:50%;border:1px solid #6b5526;
+  background:radial-gradient(circle at 35% 30%, var(--brass-bright), var(--brass-dim));
+  cursor:pointer;
+}
+
+.preset-row{display:flex;gap:6px;margin-top:8px;}
+.preset-btn{
+  flex:1;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+  padding:6px 4px;border-radius:5px;border:1px solid var(--line);
+  background:var(--panel);color:var(--ink-dim);cursor:pointer;text-align:center;
+}
+.preset-btn:hover{border-color:var(--brass-dim);color:var(--brass-bright);}
+.preset-btn.active{border-color:var(--brass);color:var(--brass-bright);background:var(--panel-light);}
+
+.apply-note{
+  font-size:10.5px;color:var(--rust);opacity:0.85;margin-top:4px;
+}
+
+/* ---------- Readouts ---------- */
+.readout-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  margin-top:4px;
+}
+.readout{
+  background:var(--bg);border:1px solid var(--line);border-radius:7px;
+  padding:9px 11px;
+}
+.readout .lbl{font-size:10px;letter-spacing:0.8px;text-transform:uppercase;color:var(--ink-dim);}
+.readout .num{
+  font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;
+  color:var(--ink);margin-top:2px;
+}
+.readout .num.accent{color:var(--teal);}
+.readout .num.accent2{color:var(--sand-2);}
+
+/* ---------- Graphs panel ---------- */
+.graphs-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;}
+@media (max-width:620px){.graphs-row{grid-template-columns:1fr;}}
+.graph-box canvas{width:100%;height:130px;display:block;}
+.graph-cap{
+  font-size:11px;color:var(--ink-dim);text-align:center;margin-top:6px;
+  font-family:'IBM Plex Mono',monospace;
+}
+
+/* ---------- Physics notes ---------- */
+.notes{margin-top:20px;}
+details{
+  background:linear-gradient(180deg,var(--panel-light),var(--panel));
+  border:1px solid var(--line);border-radius:9px;
+  padding:14px 18px;margin-bottom:10px;
+}
+summary{
+  cursor:pointer;font-weight:600;font-size:14.5px;color:var(--brass-bright);
+  font-family:'Fraunces',serif;
+  list-style:none;display:flex;align-items:center;gap:10px;
+}
+summary::-webkit-details-marker{display:none;}
+summary::before{
+  content:'+';font-family:'IBM Plex Mono',monospace;color:var(--brass);
+  width:18px;text-align:center;
+}
+details[open] summary::before{content:'–';}
+.note-body{
+  margin-top:10px;font-size:13.5px;line-height:1.7;color:var(--ink-dim);
+  max-width:760px;
+}
+.note-body strong{color:var(--ink);font-weight:600;}
+.note-body code{
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px;
+  background:var(--bg);padding:1px 5px;border-radius:3px;color:var(--sand-2);
+}
+
+footer{
+  margin-top:26px;text-align:center;font-size:11px;color:var(--ink-dim);
+  opacity:0.6;font-family:'IBM Plex Mono',monospace;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <h1>Hourglass</h1>
+      <span class="subtitle">Granular Flow Lab</span>
+    </div>
+    <span class="meta-tag">single-file · canvas simulation</span>
+  </header>
+
+  <div class="main-grid">
+
+    <!-- LEFT: visualization -->
+    <div class="panel viz-panel">
+      <p class="panel-title">Instrument</p>
+      <div class="viz-stage">
+        <canvas id="hourglassCanvas" width="340" height="520"></canvas>
+      </div>
+      <div class="viz-controls-row">
+        <button class="btn" id="flipBtn">⟲ Flip</button>
+        <button class="btn secondary" id="pauseBtn">Pause</button>
+        <button class="btn secondary" id="resetBtn">Reset</button>
+      </div>
+      <div class="gauge-row">
+        <canvas id="gaugeCanvas" width="300" height="192"></canvas>
+        <div class="gauge-readout">
+          <div class="big" id="flowBig">0.0</div>
+          <div class="lbl">grains / sec</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: controls + readouts + graphs -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <div class="panel">
+        <p class="panel-title">Controls</p>
+
+        <div class="control">
+          <div class="control-label"><span>Sand amount</span><span class="val" id="valAmount">65%</span></div>
+          <input type="range" id="amountSlider" min="20" max="90" value="65" step="1">
+          <div class="control-hint">Fraction of the upper bulb filled at the start.</div>
+        </div>
+
+        <div class="control">
+          <div class="control-label"><span>Neck width</span><span class="val" id="valNeck">0.12</span></div>
+          <input type="range" id="neckSlider" min="5" max="35" value="12" step="1">
+          <div class="control-hint">Narrower necks restrict flow sharply — not just proportionally.</div>
+        </div>
+
+        <div class="control">
+          <div class="control-label"><span>Grain size</span><span class="val" id="valGrain">3 px</span></div>
+          <input type="range" id="grainSlider" min="2" max="6" value="3" step="1">
+          <div class="control-hint">Coarser grains drain faster relative to the same neck.</div>
+          <div class="apply-note">Sand amount / neck width / grain size apply on release and re-pack the glass.</div>
+        </div>
+
+        <div class="control">
+          <div class="control-label"><span>Flow speed</span><span class="val" id="valSpeed">1.0×</span></div>
+          <input type="range" id="speedSlider" min="25" max="300" value="100" step="5">
+          <div class="preset-row">
+            <button class="preset-btn" data-speed="40">Moon</button>
+            <button class="preset-btn active" data-speed="100">Earth</button>
+            <button class="preset-btn" data-speed="220">Jupiter</button>
+          </div>
+          <div class="control-hint">Scales simulation rate. Planetary labels are illustrative, not a precise model.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Readouts</p>
+        <div class="readout-grid">
+          <div class="readout"><div class="lbl">Elapsed</div><div class="num" id="roTime">00:00</div></div>
+          <div class="readout"><div class="lbl">Total grains</div><div class="num" id="roTotal">—</div></div>
+          <div class="readout"><div class="lbl">In top bulb</div><div class="num accent2" id="roTop">—</div></div>
+          <div class="readout"><div class="lbl">In bottom bulb</div><div class="num accent" id="roBottom">—</div></div>
+          <div class="readout"><div class="lbl">Avg. flow rate</div><div class="num" id="roAvg">—</div></div>
+          <div class="readout"><div class="lbl">Est. total time</div><div class="num" id="roEst">—</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Live Graphs</p>
+        <div class="graphs-row">
+          <div class="graph-box">
+            <canvas id="flowGraph" width="320" height="130"></canvas>
+            <div class="graph-cap">flow rate vs. time (grains/s)</div>
+          </div>
+          <div class="graph-box">
+            <canvas id="cumGraph" width="320" height="130"></canvas>
+            <div class="graph-cap">cumulative grains transferred</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="notes">
+    <details open>
+      <summary>Why does the flow rate stay (almost) constant?</summary>
+      <div class="note-body">
+        Watch the flow-rate graph: after a brief settling moment it flattens out and stays nearly flat for most
+        of the run — even though the top bulb is steadily losing height. That's the opposite of how a liquid
+        behaves: water drains faster when the column above the hole is taller, because the pressure at the hole
+        scales with height. Sand doesn't, because grains push sideways against each other and the container
+        walls, forming brief arches and force chains that carry weight outward into the glass rather than straight
+        down. Past a certain depth, adding more sand on top barely increases the pressure at the neck. This is
+        sometimes called the <strong>Janssen effect</strong>, and it's the reason hourglasses are reliable
+        timers — the flow rate barely depends on how full the bulb still is, right up until the very end, when
+        the supply runs out and the rate visibly drops off.
+      </div>
+    </details>
+    <details>
+      <summary>Why does neck width matter so much?</summary>
+      <div class="note-body">
+        Try halving the neck width slider and watch the flow rate — it drops by far more than half. For an
+        idealized fluid you'd expect the flow through an opening to scale with its area, i.e. with
+        <code>width²</code>. Real granular flow through an orifice follows something closer to the empirical
+        <strong>Beverloo correlation</strong>, <code>Q ∝ (D − k·d)^2.5</code>, where <code>D</code> is the
+        opening diameter and <code>d</code> is the grain diameter. The exponent of 2.5 (steeper than 2) comes from
+        an "empty annulus" right at the edge of the opening — grains can't use the outermost sliver of the hole
+        because they can't squeeze through a gap smaller than their own size. That's also why the grain-size
+        slider has a real effect here: coarser grains eat more of the neck's effective width before any of them
+        can even start falling through.
+      </div>
+    </details>
+    <details>
+      <summary>About this simulation</summary>
+      <div class="note-body">
+        Each grain is a cell in a grid that follows simple falling-sand rules: drop straight down if the cell
+        below is empty, otherwise slip diagonally if a diagonal cell is open, otherwise stay put. This is a
+        cellular automaton, not a rigid-body or molecular dynamics simulation — it's a deliberately lightweight
+        model that still reproduces three things real sand does: a roughly constant drain rate, a settling pile
+        with a stable slope (an approximation of the real <strong>angle of repose</strong>), and a funnel-shaped
+        depression forming on the top surface as it drains. Flow rate and grain counts in the readouts above are
+        measured directly from grains crossing the neck — they aren't pre-scripted.
+      </div>
+    </details>
+  </div>
+
+  <footer>hourglass-lab · single HTML file, no dependencies, deploys as-is on GitHub Pages</footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ===================== CANVAS / GEOMETRY CONSTANTS =====================
+  const hgCanvas = document.getElementById('hourglassCanvas');
+  const hctx = hgCanvas.getContext('2d');
+  const CW = hgCanvas.width, CH = hgCanvas.height;
+
+  const GLASS_LEFT = 60, GLASS_RIGHT = 280;
+  const GLASS_TOP = 46, GLASS_BOTTOM = 472;
+  const GLASS_W = GLASS_RIGHT - GLASS_LEFT;
+  const GLASS_H = GLASS_BOTTOM - GLASS_TOP;
+  const CENTER_X = (GLASS_LEFT + GLASS_RIGHT) / 2;
+  const MAX_HALF_W = GLASS_W / 2;
+  const SHAPE_EXP = 1.55;
+  const BAND_THRESH = 0.05;
+
+  // ===================== STATE =====================
+  let cellSize = 3;
+  let gridCols, gridRows, neckRow;
+  let grid, shadeArr, leftColArr, rightColArr;
+  let neckWidthFrac = 0.12;
+  let sandAmountFrac = 0.65;
+  let speedMult = 1.0;
+  let running = true;
+
+  let topCapacity = 0;
+  let crossCountTotal = 0;
+  let crossSinceSample = 0;
+  let simTimeSec = 0;
+  let lastSampleTime = 0;
+  let accumulator = 0;
+  const STEP_DT = 1/30;
+  const MAX_STEPS_PER_FRAME = 8;
+
+  let flowHistory = [];   // {t, v}
+  let cumHistory = [];    // {t, v}
+  let currentFlowRate = 0;
+  let maxFlowSeen = 1;
+
+  // ===================== GEOMETRY HELPERS =====================
+  function halfWidthAtT(t){
+    const d = Math.abs(t - 0.5) * 2; // 0 at neck, 1 at top/bottom
+    const neckHalf = neckWidthFrac * MAX_HALF_W;
+    if (d <= BAND_THRESH) return neckHalf;
+    const dd = (d - BAND_THRESH) / (1 - BAND_THRESH);
+    return neckHalf + (MAX_HALF_W - neckHalf) * Math.pow(dd, SHAPE_EXP);
+  }
+
+  function idx(r,c){ return r*gridCols + c; }
+  function insideGlass(r,c){
+    if (r<0||r>=gridRows||c<0||c>=gridCols) return false;
+    return c >= leftColArr[r] && c <= rightColArr[r];
+  }
+
+  function computeBounds(){
+    leftColArr = new Int16Array(gridRows);
+    rightColArr = new Int16Array(gridRows);
+    for (let r=0; r<gridRows; r++){
+      const t = r/(gridRows-1);
+      const hw = halfWidthAtT(t);
+      const leftPx = CENTER_X - hw, rightPx = CENTER_X + hw;
+      leftColArr[r]  = Math.round((leftPx - GLASS_LEFT) / cellSize);
+      rightColArr[r] = Math.round((rightPx - GLASS_LEFT) / cellSize) - 1;
+    }
+    neckRow = Math.round((gridRows-1) * 0.5);
+  }
+
+  function computeTopCapacity(){
+    let cap = 0;
+    for (let r=0; r<neckRow; r++){
+      const w = rightColArr[r]-leftColArr[r]+1;
+      if (w>0) cap += w;
+    }
+    topCapacity = cap;
+  }
+
+  function initGridStructure(){
+    gridCols = Math.max(10, Math.floor(GLASS_W / cellSize));
+    gridRows = Math.max(20, Math.floor(GLASS_H / cellSize));
+    grid = new Uint8Array(gridCols*gridRows);
+    shadeArr = new Uint8Array(gridCols*gridRows);
+    for (let i=0;i<shadeArr.length;i++) shadeArr[i] = (Math.random()*3)|0;
+    computeBounds();
+    computeTopCapacity();
+  }
+
+  function fillInitialSand(){
+    grid.fill(0);
+    let remaining = Math.floor(topCapacity * sandAmountFrac);
+    for (let r=neckRow-1; r>=0 && remaining>0; r--){
+      const l = leftColArr[r], rgt = rightColArr[r];
+      const w = rgt-l+1;
+      if (w<=0) continue;
+      if (remaining >= w){
+        for (let c=l;c<=rgt;c++) grid[idx(r,c)] = 1;
+        remaining -= w;
+      } else {
+        const start = l + Math.floor((w-remaining)/2);
+        for (let c=start;c<start+remaining;c++) grid[idx(r,c)] = 1;
+        remaining = 0;
+      }
+    }
+  }
+
+  function regenerate(){
+    initGridStructure();
+    fillInitialSand();
+    resetCounters();
+  }
+
+  function resetCounters(){
+    crossCountTotal = 0;
+    crossSinceSample = 0;
+    simTimeSec = 0;
+    lastSampleTime = 0;
+    accumulator = 0;
+    flowHistory = [];
+    cumHistory = [];
+    currentFlowRate = 0;
+    maxFlowSeen = 1;
+  }
+
+  // ===================== AUTOMATON STEP =====================
+  function stepAutomaton(){
+    for (let r=gridRows-2; r>=0; r--){
+      const leftToRight = Math.random() < 0.5;
+      for (let i=0;i<gridCols;i++){
+        const c = leftToRight ? i : (gridCols-1-i);
+        const id = idx(r,c);
+        if (grid[id] !== 1) continue;
+        if (insideGlass(r+1,c) && grid[idx(r+1,c)] === 0){
+          grid[idx(r+1,c)] = 1; grid[id] = 0;
+          if (r === neckRow-1){ crossCountTotal++; crossSinceSample++; }
+          continue;
+        }
+        const order = Math.random() < 0.5 ? [-1,1] : [1,-1];
+        for (let k=0;k<2;k++){
+          const dx = order[k];
+          const nc = c+dx;
+          if (insideGlass(r+1,nc) && grid[idx(r+1,nc)] === 0){
+            grid[idx(r+1,nc)] = 1; grid[id] = 0;
+            if (r === neckRow-1){ crossCountTotal++; crossSinceSample++; }
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // ===================== RENDER: HOURGLASS =====================
+  const sandColors = ['#D9A24B', '#E8B768', '#C28C3C'];
+
+  function drawFrame(ctx){
+    ctx.clearRect(0,0,CW,CH);
+    // brass caps
+    const capGrad = ctx.createLinearGradient(0,0,0,30);
+    capGrad.addColorStop(0, '#EAD08A');
+    capGrad.addColorStop(0.5, '#A6843F');
+    capGrad.addColorStop(1, '#7A5F2C');
+    ctx.fillStyle = capGrad;
+    roundRect(ctx, GLASS_LEFT-22, GLASS_TOP-26, GLASS_W+44, 26, 6); ctx.fill();
+    roundRect(ctx, GLASS_LEFT-22, GLASS_BOTTOM, GLASS_W+44, 26, 6); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1;
+    roundRect(ctx, GLASS_LEFT-22, GLASS_TOP-26, GLASS_W+44, 26, 6); ctx.stroke();
+    roundRect(ctx, GLASS_LEFT-22, GLASS_BOTTOM, GLASS_W+44, 26, 6); ctx.stroke();
+
+    // posts
+    ctx.fillStyle = '#9C7D3E';
+    [GLASS_LEFT-16, GLASS_RIGHT+10].forEach(x=>{
+      ctx.fillRect(x, GLASS_TOP-2, 6, GLASS_H+4);
+    });
+    // rivets
+    ctx.fillStyle = '#3A2E18';
+    [[GLASS_LEFT-12,GLASS_TOP-14],[GLASS_RIGHT+14,GLASS_TOP-14],
+     [GLASS_LEFT-12,GLASS_BOTTOM+14],[GLASS_RIGHT+14,GLASS_BOTTOM+14]].forEach(p=>{
+      ctx.beginPath(); ctx.arc(p[0],p[1],3,0,Math.PI*2); ctx.fill();
+    });
+  }
+
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function drawGlass(ctx){
+    const N = 70;
+    ctx.beginPath();
+    for (let i=0;i<=N;i++){
+      const t = i/N;
+      const y = GLASS_TOP + t*GLASS_H;
+      const hw = halfWidthAtT(t);
+      const x = CENTER_X - hw;
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    for (let i=N;i>=0;i--){
+      const t = i/N;
+      const y = GLASS_TOP + t*GLASS_H;
+      const hw = halfWidthAtT(t);
+      const x = CENTER_X + hw;
+      ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(180,205,210,0.045)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(214,228,232,0.4)';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    // glossy highlight streak
+    ctx.beginPath();
+    for (let i=0;i<=N;i++){
+      const t=i/N; const y=GLASS_TOP+t*GLASS_H; const hw=halfWidthAtT(t);
+      const x = CENTER_X - hw*0.62;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle='rgba(255,255,255,0.10)';
+    ctx.lineWidth=2.4;
+    ctx.stroke();
+  }
+
+  function drawSand(ctx){
+    for (let r=0;r<gridRows;r++){
+      const rowOff = r*gridCols;
+      const py = GLASS_TOP + r*cellSize;
+      for (let c=leftColArr[r]; c<=rightColArr[r]; c++){
+        if (c<0||c>=gridCols) continue;
+        if (grid[rowOff+c] === 1){
+          ctx.fillStyle = sandColors[shadeArr[rowOff+c]];
+          ctx.fillRect(GLASS_LEFT + c*cellSize, py, cellSize+0.6, cellSize+0.6);
+        }
+      }
+    }
+  }
+
+  function renderHourglass(){
+    drawFrame(hctx);
+    drawGlass(hctx);
+    drawSand(hctx);
+    drawGlass(hctx); // re-stroke edge over sand for crisp glass line
+  }
+
+  // ===================== GAUGE =====================
+  const gaugeCanvas = document.getElementById('gaugeCanvas');
+  const gctx = gaugeCanvas.getContext('2d');
+  function renderGauge(){
+    const W = gaugeCanvas.width, H = gaugeCanvas.height;
+    gctx.clearRect(0,0,W,H);
+    const cx = W/2, cy = H-10, R = Math.min(W,H*1.7)/2 - 14;
+    const scaleMax = Math.max(4, Math.ceil(maxFlowSeen*1.25));
+    gctx.lineWidth = 10;
+    gctx.lineCap='round';
+    gctx.strokeStyle = '#3A3024';
+    gctx.beginPath(); gctx.arc(cx,cy,R,Math.PI,2*Math.PI); gctx.stroke();
+
+    const frac = Math.min(1, currentFlowRate/scaleMax);
+    const ang = Math.PI + frac*Math.PI;
+    const grad = gctx.createLinearGradient(cx-R,0,cx+R,0);
+    grad.addColorStop(0,'#6FAE9A'); grad.addColorStop(1,'#E8B768');
+    gctx.strokeStyle = grad;
+    gctx.beginPath(); gctx.arc(cx,cy,R,Math.PI,ang); gctx.stroke();
+
+    // ticks
+    gctx.lineWidth=1.5; gctx.strokeStyle='#665536'; gctx.font='10px IBM Plex Mono';
+    gctx.fillStyle='#A99C82'; gctx.textAlign='center';
+    for(let i=0;i<=4;i++){
+      const a = Math.PI + (i/4)*Math.PI;
+      const x1=cx+Math.cos(a)*(R+8), y1=cy+Math.sin(a)*(R+8);
+      const x2=cx+Math.cos(a)*(R+2), y2=cy+Math.sin(a)*(R+2);
+      gctx.beginPath(); gctx.moveTo(x1,y1); gctx.lineTo(x2,y2); gctx.stroke();
+    }
+    gctx.fillText('0', cx-R-2, cy+14);
+    gctx.fillText(scaleMax.toFixed(0), cx+R+2, cy+14);
+
+    // needle
+    const na = Math.PI + frac*Math.PI;
+    gctx.strokeStyle='#EAD08A'; gctx.lineWidth=2.5;
+    gctx.beginPath(); gctx.moveTo(cx,cy);
+    gctx.lineTo(cx+Math.cos(na)*(R-6), cy+Math.sin(na)*(R-6)); gctx.stroke();
+    gctx.fillStyle='#EAD08A'; gctx.beginPath(); gctx.arc(cx,cy,4,0,Math.PI*2); gctx.fill();
+  }
+
+  // ===================== GRAPHS =====================
+  const flowGraphCanvas = document.getElementById('flowGraph');
+  const cumGraphCanvas = document.getElementById('cumGraph');
+  const fgctx = flowGraphCanvas.getContext('2d');
+  const cgctx = cumGraphCanvas.getContext('2d');
+
+  function drawLineGraph(ctx, canvas, data, color, yLabelFmt){
+    const W = canvas.width, H = canvas.height;
+    const padL=34, padR=10, padT=10, padB=18;
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='#3A3024'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,H-padB); ctx.lineTo(W-padR,H-padB); ctx.stroke();
+
+    if (data.length < 2){
+      ctx.fillStyle='#5c5240'; ctx.font='11px IBM Plex Mono'; ctx.textAlign='center';
+      ctx.fillText('collecting data…', W/2, H/2);
+      return;
+    }
+    const tMin = data[0].t, tMax = data[data.length-1].t;
+    let vMax = 0; data.forEach(p=>{ if(p.v>vMax) vMax=p.v; });
+    vMax = Math.max(vMax*1.15, 1);
+
+    // gridlines + y labels
+    ctx.strokeStyle='rgba(255,255,255,0.05)';
+    ctx.fillStyle='#7A6E58'; ctx.font='9.5px IBM Plex Mono'; ctx.textAlign='right';
+    for(let i=0;i<=3;i++){
+      const yy = padT + (1-i/3)*(H-padT-padB);
+      ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke();
+      ctx.fillText(yLabelFmt(vMax*i/3), padL-4, yy+3);
+    }
+
+    ctx.strokeStyle = color; ctx.lineWidth=1.8; ctx.beginPath();
+    data.forEach((p,i)=>{
+      const x = padL + (tMax>tMin ? (p.t-tMin)/(tMax-tMin) : 0)*(W-padL-padR);
+      const y = padT + (1 - p.v/vMax)*(H-padT-padB);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = color+'33';
+    ctx.lineTo(padL+(W-padL-padR), H-padB);
+    ctx.lineTo(padL, H-padB);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle='#7A6E58'; ctx.textAlign='left';
+    ctx.fillText('0s', padL, H-4);
+    ctx.textAlign='right';
+    ctx.fillText(tMax.toFixed(0)+'s', W-padR, H-4);
+  }
+
+  function renderGraphs(){
+    drawLineGraph(fgctx, flowGraphCanvas, flowHistory, '#6FAE9A', v=>v.toFixed(1));
+    drawLineGraph(cgctx, cumGraphCanvas, cumHistory, '#E8B768', v=>Math.round(v));
+  }
+
+  // ===================== READOUTS =====================
+  const roTime=document.getElementById('roTime');
+  const roTotal=document.getElementById('roTotal');
+  const roTop=document.getElementById('roTop');
+  const roBottom=document.getElementById('roBottom');
+  const roAvg=document.getElementById('roAvg');
+  const roEst=document.getElementById('roEst');
+  const flowBig=document.getElementById('flowBig');
+
+  function fmtTime(s){
+    const m = Math.floor(s/60), sec = Math.floor(s%60);
+    return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+  }
+
+  function updateReadouts(){
+    const target = Math.floor(topCapacity * sandAmountFrac);
+    const inBottom = crossCountTotal;
+    const inTop = Math.max(0, target - inBottom);
+    roTime.textContent = fmtTime(simTimeSec);
+    roTotal.textContent = target.toLocaleString();
+    roTop.textContent = inTop.toLocaleString();
+    roBottom.textContent = inBottom.toLocaleString();
+    const avg = simTimeSec>0 ? crossCountTotal/simTimeSec : 0;
+    roAvg.textContent = avg>0 ? avg.toFixed(1)+' /s' : '—';
+    if (avg>0 && inTop>0){
+      const remaining = inTop/avg;
+      roEst.textContent = fmtTime(simTimeSec+remaining)+' total';
+    } else if (inTop===0 && target>0){
+      roEst.textContent = fmtTime(simTimeSec)+' (done)';
+    } else {
+      roEst.textContent = '—';
+    }
+    flowBig.textContent = currentFlowRate.toFixed(1);
+  }
+
+  // ===================== MAIN LOOP =====================
+  let lastTs = null;
+  function frame(ts){
+    if (lastTs===null) lastTs = ts;
+    let dt = (ts-lastTs)/1000;
+    lastTs = ts;
+    dt = Math.min(dt, 0.05);
+
+    if (running){
+      accumulator += dt*speedMult;
+      let steps=0;
+      while (accumulator >= STEP_DT && steps < MAX_STEPS_PER_FRAME){
+        stepAutomaton();
+        accumulator -= STEP_DT;
+        simTimeSec += STEP_DT;
+        steps++;
+      }
+      if (simTimeSec - lastSampleTime >= 0.4){
+        const dtS = simTimeSec - lastSampleTime;
+        currentFlowRate = crossSinceSample/dtS;
+        if (currentFlowRate>maxFlowSeen) maxFlowSeen=currentFlowRate;
+        flowHistory.push({t:simTimeSec, v:currentFlowRate});
+        cumHistory.push({t:simTimeSec, v:crossCountTotal});
+        if (flowHistory.length>500){ flowHistory.shift(); cumHistory.shift(); }
+        crossSinceSample = 0;
+        lastSampleTime = simTimeSec;
+      }
+    }
+
+    renderHourglass();
+    renderGauge();
+    renderGraphs();
+    updateReadouts();
+
+    requestAnimationFrame(frame);
+  }
+
+  // ===================== UI WIRING =====================
+  const amountSlider = document.getElementById('amountSlider');
+  const neckSlider = document.getElementById('neckSlider');
+  const grainSlider = document.getElementById('grainSlider');
+  const speedSlider = document.getElementById('speedSlider');
+  const valAmount = document.getElementById('valAmount');
+  const valNeck = document.getElementById('valNeck');
+  const valGrain = document.getElementById('valGrain');
+  const valSpeed = document.getElementById('valSpeed');
+
+  amountSlider.addEventListener('input', ()=>{ valAmount.textContent = amountSlider.value+'%'; });
+  amountSlider.addEventListener('change', ()=>{
+    sandAmountFrac = (+amountSlider.value)/100;
+    regenerate();
+  });
+
+  neckSlider.addEventListener('input', ()=>{
+    valNeck.textContent = ((+neckSlider.value)/100).toFixed(2);
+  });
+  neckSlider.addEventListener('change', ()=>{
+    neckWidthFrac = (+neckSlider.value)/100;
+    regenerate();
+  });
+
+  grainSlider.addEventListener('input', ()=>{ valGrain.textContent = grainSlider.value+' px'; });
+  grainSlider.addEventListener('change', ()=>{
+    cellSize = +grainSlider.value;
+    regenerate();
+  });
+
+  function setSpeedFromValue(v){
+    speedMult = v/100;
+    valSpeed.textContent = speedMult.toFixed(2)+'×';
+    speedSlider.value = v;
+    document.querySelectorAll('.preset-btn').forEach(b=>{
+      b.classList.toggle('active', Math.abs(+b.dataset.speed - v) < 1);
+    });
+  }
+  speedSlider.addEventListener('input', ()=> setSpeedFromValue(+speedSlider.value));
+  document.querySelectorAll('.preset-btn').forEach(b=>{
+    b.addEventListener('click', ()=> setSpeedFromValue(+b.dataset.speed));
+  });
+
+  document.getElementById('pauseBtn').addEventListener('click', function(){
+    running = !running;
+    this.textContent = running ? 'Pause' : 'Play';
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', ()=>{ regenerate(); });
+
+  document.getElementById('flipBtn').addEventListener('click', ()=>{
+    hgCanvas.classList.add('flipping');
+    setTimeout(()=>{
+      // mirror grid vertically (top <-> bottom)
+      const newGrid = new Uint8Array(grid.length);
+      for (let r=0;r<gridRows;r++){
+        const srcRow = gridRows-1-r;
+        for (let c=0;c<gridCols;c++){
+          newGrid[idx(r,c)] = grid[idx(srcRow,c)];
+        }
+      }
+      grid = newGrid;
+      resetCounters();
+      hgCanvas.classList.remove('flipping');
+    }, 650);
+  });
+
+  // ===================== INIT =====================
+  setSpeedFromValue(100);
+  regenerate();
+  requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<h2 class="sr-only">Interactive simulation of a klepsydra, an ancient water clock shaped like an hourglass, where water drains from the upper chamber to the lower chamber at a steady rate to mark time. Includes controls for duration, speed, play, pause, reset and flip.</h2>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 0 0 1rem;">
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <label for="duration" style="font-size: 14px; color: var(--color-text-secondary);">Duration (s)</label>
+    <input type="number" id="duration" min="5" max="120" step="5" value="30" style="width: 64px;" />
+  </div>
+  <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 160px;">
+    <label for="speed" style="font-size: 14px; color: var(--color-text-secondary);">Speed</label>
+    <input type="range" id="speed" min="0.5" max="5" step="0.5" value="1" style="flex: 1;" />
+    <span id="speedOut" style="font-size: 14px; font-weight: 500; min-width: 32px;">1x</span>
+  </div>
+  <button id="playBtn"><i class="ti ti-player-play" style="font-size:16px; vertical-align:-2px; margin-right:4px;" aria-hidden="true"></i>Play</button>
+  <button id="resetBtn"><i class="ti ti-refresh" style="font-size:16px; vertical-align:-2px; margin-right:4px;" aria-hidden="true"></i>Reset</button>
+  <button id="flipBtn"><i class="ti ti-arrows-up-down" style="font-size:16px; vertical-align:-2px; margin-right:4px;" aria-hidden="true"></i>Flip</button>
+</div>
+
+<div style="position: relative;">
+  <canvas id="klepsydra" width="680" height="460" style="width: 100%; height: auto; display: block;"></canvas>
+</div>
+
+<div style="display: flex; justify-content: center; gap: 24px; margin-top: 0.5rem;">
+  <span style="font-size: 14px; color: var(--color-text-secondary);">Elapsed <span id="elapsedOut" style="font-weight: 500; color: var(--color-text-primary);">0.0s</span></span>
+  <span style="font-size: 14px; color: var(--color-text-secondary);">Remaining <span id="remainOut" style="font-weight: 500; color: var(--color-text-primary);">30.0s</span></span>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('klepsydra');
+  const ctx = canvas.getContext('2d');
+  const W = 680, H = 460, cx = W/2;
+
+  const topY = 50, topHW = 120;
+  const neckY = H/2, neckHW = 4;
+  const bottomY = H-50, bottomHW = 120;
+
+  function halfWidthAt(y){
+    if (y <= neckY){
+      const t = (y - topY) / (neckY - topY);
+      return topHW + (neckHW - topHW) * t;
+    } else {
+      const t = (y - neckY) / (bottomY - neckY);
+      return neckHW + (bottomHW - neckHW) * t;
+    }
+  }
+
+  function areaBetween(yA, yB){
+    const wA = halfWidthAt(yA) * 2;
+    const wB = halfWidthAt(yB) * 2;
+    return Math.abs((wA + wB) / 2 * (yB - yA));
+  }
+
+  const totalArea = areaBetween(topY, neckY);
+
+  function solveY(targetArea, lo, hi, areaFn, increasing){
+    for (let i = 0; i < 40; i++){
+      const mid = (lo + hi) / 2;
+      const a = areaFn(mid);
+      if (increasing){ if (a < targetArea) lo = mid; else hi = mid; }
+      else { if (a > targetArea) lo = mid; else hi = mid; }
+    }
+    return (lo + hi) / 2;
+  }
+
+  const state = { running: false, elapsed: 0, duration: 30, speed: 1, lastTs: null, drips: [], dripTimer: 0 };
+
+  const durationInput = document.getElementById('duration');
+  const speedInput = document.getElementById('speed');
+  const speedOut = document.getElementById('speedOut');
+  const playBtn = document.getElementById('playBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const flipBtn = document.getElementById('flipBtn');
+  const elapsedOut = document.getElementById('elapsedOut');
+  const remainOut = document.getElementById('remainOut');
+
+  durationInput.addEventListener('change', () => {
+    let v = parseFloat(durationInput.value);
+    if (!isFinite(v) || v < 5) v = 5;
+    if (v > 120) v = 120;
+    durationInput.value = v;
+    state.duration = v;
+    state.elapsed = Math.min(state.elapsed, v);
+    state.drips = [];
+    draw();
+  });
+
+  speedInput.addEventListener('input', () => {
+    state.speed = parseFloat(speedInput.value);
+    speedOut.textContent = state.speed + 'x';
+  });
+
+  playBtn.addEventListener('click', () => {
+    state.running = !state.running;
+    if (state.running && state.elapsed >= state.duration) state.elapsed = 0;
+    updatePlayBtn();
+    state.lastTs = null;
+    if (state.running) requestAnimationFrame(loop);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    state.running = false;
+    state.elapsed = 0;
+    state.drips = [];
+    state.lastTs = null;
+    updatePlayBtn();
+    draw();
+  });
+
+  flipBtn.addEventListener('click', () => {
+    state.elapsed = state.duration - state.elapsed;
+    state.drips = [];
+    draw();
+  });
+
+  function updatePlayBtn(){
+    playBtn.innerHTML = state.running
+      ? '<i class="ti ti-player-pause" style="font-size:16px; vertical-align:-2px; margin-right:4px;" aria-hidden="true"></i>Pause'
+      : '<i class="ti ti-player-play" style="font-size:16px; vertical-align:-2px; margin-right:4px;" aria-hidden="true"></i>Play';
+  }
+
+  function loop(ts){
+    if (!state.running) return;
+    if (state.lastTs === null) state.lastTs = ts;
+    const dt = (ts - state.lastTs) / 1000;
+    state.lastTs = ts;
+
+    const frac = Math.min(state.elapsed / state.duration, 1);
+    if (frac < 1){
+      state.elapsed += dt * state.speed;
+      if (state.elapsed >= state.duration){
+        state.elapsed = state.duration;
+        state.running = false;
+        updatePlayBtn();
+      }
+
+      state.dripTimer += dt * state.speed;
+      const dripPeriod = 0.18;
+      if (state.dripTimer > dripPeriod){
+        state.dripTimer = 0;
+        state.drips.push({ y: neckY });
+      }
+    } else {
+      state.running = false;
+      updatePlayBtn();
+    }
+
+    const lowerFrac = Math.min(state.elapsed / state.duration, 1);
+    const filledLowerArea = totalArea * lowerFrac;
+    const lowerY = solveY(filledLowerArea, neckY, bottomY, (y) => areaBetween(neckY, y), true);
+
+    state.drips.forEach(d => { d.y += dt * state.speed * 420; });
+    state.drips = state.drips.filter(d => d.y < lowerY);
+
+    draw();
+    if (state.running || state.drips.length) requestAnimationFrame(loop);
+  }
+
+  function glassPath(){
+    ctx.beginPath();
+    ctx.moveTo(cx - topHW, topY);
+    ctx.lineTo(cx - neckHW, neckY);
+    ctx.lineTo(cx - bottomHW, bottomY);
+    ctx.lineTo(cx + bottomHW, bottomY);
+    ctx.lineTo(cx + neckHW, neckY);
+    ctx.lineTo(cx + topHW, topY);
+    ctx.closePath();
+  }
+
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+
+    const frac = Math.min(state.elapsed / state.duration, 1);
+    const remainingUpperArea = totalArea * (1 - frac);
+    const upperY = solveY(remainingUpperArea, topY, neckY, (y) => areaBetween(y, neckY), false);
+    const filledLowerArea = totalArea * frac;
+    const lowerY = solveY(filledLowerArea, neckY, bottomY, (y) => areaBetween(neckY, y), true);
+
+    const wobble = Math.sin(performance.now() / 500) * 1.5;
+
+    ctx.save();
+    glassPath();
+    ctx.clip();
+
+    if (frac < 1){
+      const wTop = halfWidthAt(upperY);
+      ctx.beginPath();
+      ctx.moveTo(cx - wTop, upperY + wobble);
+      ctx.lineTo(cx + wTop, upperY + wobble);
+      ctx.lineTo(cx + neckHW, neckY);
+      ctx.lineTo(cx - neckHW, neckY);
+      ctx.closePath();
+      ctx.fillStyle = '#3a8fd9';
+      ctx.fill();
+    }
+
+    if (frac > 0){
+      const wBottom = halfWidthAt(lowerY);
+      ctx.beginPath();
+      ctx.moveTo(cx - wBottom, lowerY - wobble);
+      ctx.lineTo(cx + wBottom, lowerY - wobble);
+      ctx.lineTo(cx + bottomHW, bottomY);
+      ctx.lineTo(cx - bottomHW, bottomY);
+      ctx.closePath();
+      ctx.fillStyle = '#3a8fd9';
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    state.drips.forEach(d => {
+      ctx.beginPath();
+      ctx.ellipse(cx, d.y, 2.5, 4, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#3a8fd9';
+      ctx.fill();
+    });
+
+    glassPath();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#9fb8c9';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(cx - topHW - 14, topY);
+    ctx.lineTo(cx + topHW + 14, topY);
+    ctx.moveTo(cx - bottomHW - 14, bottomY);
+    ctx.lineTo(cx + bottomHW + 14, bottomY);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#7a6248';
+    ctx.stroke();
+
+    elapsedOut.textContent = Math.min(state.elapsed, state.duration).toFixed(1) + 's';
+    remainOut.textContent = Math.max(state.duration - state.elapsed, 0).toFixed(1) + 's';
+  }
+
+  draw();
+})();
+</script>

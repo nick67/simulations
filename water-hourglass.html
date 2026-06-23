@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clepsydra — A Water Hourglass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#08161f;
+    --deep:#0c2330;
+    --glass-line: rgba(191,227,232,0.55);
+    --glass-fill: rgba(191,227,232,0.06);
+    --water-a:#1c6e8c;
+    --water-b:#0e3d52;
+    --water-glow:#7fdbff;
+    --brass-a:#d6a85c;
+    --brass-b:#8a5a26;
+    --walnut-a:#3a2317;
+    --walnut-b:#1c100a;
+    --paper:#eef3f1;
+    --paper-dim:#9fb3ae;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:
+      radial-gradient(120% 90% at 50% -10%, #14313f 0%, var(--deep) 45%, var(--ink) 100%);
+    color:var(--paper);
+    font-family:'Inter',sans-serif;
+    overflow-x:hidden;
+  }
+  .stage{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    padding:48px 20px 40px;
+    position:relative;
+  }
+  /* ambient caustic shimmer */
+  .stage::before{
+    content:"";
+    position:absolute; inset:0;
+    background:
+      repeating-linear-gradient(115deg, rgba(127,219,255,0.025) 0px, rgba(127,219,255,0.025) 2px, transparent 2px, transparent 90px);
+    animation: shimmer 14s linear infinite;
+    pointer-events:none;
+  }
+  @keyframes shimmer{
+    0%{ background-position-x:0; }
+    100%{ background-position-x:900px; }
+  }
+
+  header{
+    text-align:center;
+    margin-bottom:6px;
+    z-index:1;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.28em;
+    text-transform:uppercase;
+    color:var(--water-glow);
+    opacity:0.8;
+    margin:0 0 10px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-style:italic;
+    font-size:clamp(28px, 5vw, 44px);
+    margin:0;
+    color:var(--paper);
+    letter-spacing:0.01em;
+  }
+  .sub{
+    font-size:13.5px;
+    color:var(--paper-dim);
+    margin:10px 0 0;
+    max-width:420px;
+    line-height:1.5;
+  }
+
+  .glass-wrap{
+    position:relative;
+    margin-top:18px;
+    transition: transform 1.1s cubic-bezier(.65,0,.35,1);
+    transform: rotate(0deg);
+    filter: drop-shadow(0 30px 60px rgba(0,0,0,0.55));
+  }
+  .glass-wrap.flipped{ transform: rotate(180deg); }
+
+  canvas{
+    display:block;
+    width:min(86vw, 320px);
+    height:auto;
+  }
+
+  .readout{
+    font-family:'JetBrains Mono', monospace;
+    text-align:center;
+    margin-top:6px;
+    z-index:1;
+  }
+  .readout .time{
+    font-size:clamp(34px, 7vw, 46px);
+    font-weight:700;
+    letter-spacing:0.02em;
+    color:var(--paper);
+    font-variant-numeric: tabular-nums;
+  }
+  .readout .state{
+    font-size:11px;
+    letter-spacing:0.2em;
+    text-transform:uppercase;
+    color:var(--paper-dim);
+    margin-top:2px;
+  }
+
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+    margin-top:26px;
+    z-index:1;
+  }
+  button.ctl{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:0.01em;
+    color:var(--ink);
+    background:linear-gradient(180deg, var(--brass-a), var(--brass-b));
+    border:none;
+    border-radius:999px;
+    padding:11px 22px;
+    cursor:pointer;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.35), 0 6px 16px rgba(138,90,38,0.25);
+    transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  }
+  button.ctl:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+  button.ctl:active{ transform:translateY(1px); box-shadow:0 1px 0 rgba(0,0,0,0.35);}
+  button.ctl.secondary{
+    background:transparent;
+    color:var(--paper);
+    border:1px solid rgba(238,243,241,0.25);
+    box-shadow:none;
+  }
+  button.ctl.secondary:hover{ background:rgba(238,243,241,0.08); }
+
+  .durations{
+    display:flex;
+    gap:8px;
+    margin-top:16px;
+    z-index:1;
+  }
+  .durations button{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    background:transparent;
+    border:1px solid rgba(127,219,255,0.25);
+    color:var(--paper-dim);
+    padding:7px 13px;
+    border-radius:8px;
+    cursor:pointer;
+    transition: all .15s ease;
+  }
+  .durations button.active{
+    border-color:var(--water-glow);
+    color:var(--water-glow);
+    background:rgba(127,219,255,0.08);
+  }
+  .durations button:hover{ color:var(--paper); }
+
+  footer{
+    margin-top:34px;
+    font-size:11px;
+    color:var(--paper-dim);
+    opacity:0.6;
+    text-align:center;
+    z-index:1;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .stage::before{ animation:none; }
+    .glass-wrap{ transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <header>
+    <p class="eyebrow">Clepsydra No. 3</p>
+    <h1>A Water Hourglass</h1>
+    <p class="sub">Flip the glass to begin the pour. Every drop that falls is one you'll never get back — so choose a duration that matters.</p>
+  </header>
+
+  <div class="glass-wrap" id="glassWrap">
+    <canvas id="hg" width="480" height="640"></canvas>
+  </div>
+
+  <div class="readout">
+    <div class="time" id="timeLabel">05:00</div>
+    <div class="state" id="stateLabel">Resting — tap flip to pour</div>
+  </div>
+
+  <div class="durations" id="durations">
+    <button data-sec="60">1 MIN</button>
+    <button data-sec="180" class="active">3 MIN</button>
+    <button data-sec="300">5 MIN</button>
+    <button data-sec="600">10 MIN</button>
+  </div>
+
+  <div class="controls">
+    <button class="ctl" id="flipBtn">Flip the glass</button>
+    <button class="ctl secondary" id="playBtn">Pause</button>
+    <button class="ctl secondary" id="resetBtn">Reset</button>
+  </div>
+
+  <footer>Drag nothing. Just watch — that's the whole instrument.</footer>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('hg');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const wrap = document.getElementById('glassWrap');
+  const timeLabel = document.getElementById('timeLabel');
+  const stateLabel = document.getElementById('stateLabel');
+  const flipBtn = document.getElementById('flipBtn');
+  const playBtn = document.getElementById('playBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const durBtns = document.querySelectorAll('#durations button');
+
+  // ---- geometry ----
+  const cx = W/2;
+  const capTopY0 = 30, capTopY1 = 58;
+  const bulbTopY0 = 58, bulbTopY1 = 296;
+  const neckY0 = 296, neckY1 = 344;
+  const bulbBotY0 = 344, bulbBotY1 = 582;
+  const capBotY0 = 582, capBotY1 = 610;
+  const capHW = 118;     // half width of flat caps
+  const neckHW = 6;      // half width of neck
+
+  function bulbHW(t){
+    // t=0 wide (cap side), t=1 narrow (neck side)
+    const c = Math.pow(Math.cos(t*Math.PI/2), 0.85);
+    return neckHW + (capHW - neckHW) * c;
+  }
+
+  function glassPath(p){
+    const N = 36;
+    p.moveTo(cx-capHW, capTopY0);
+    // top cap
+    p.lineTo(cx-capHW, capTopY1);
+    // top bulb down to neck (left side)
+    for(let i=0;i<=N;i++){
+      const t = i/N;
+      const y = bulbTopY0 + t*(bulbTopY1-bulbTopY0);
+      const hw = bulbHW(t);
+      p.lineTo(cx-hw, y);
+    }
+    // neck left
+    p.lineTo(cx-neckHW, neckY1);
+    // bottom bulb down to cap (left side) -- mirror profile
+    for(let i=0;i<=N;i++){
+      const t = i/N;
+      const y = bulbBotY0 + t*(bulbBotY1-bulbBotY0);
+      const hw = bulbHW(1-t);
+      p.lineTo(cx-hw, y);
+    }
+    p.lineTo(cx-capHW, capBotY1);
+    // bottom cap across
+    p.lineTo(cx+capHW, capBotY1);
+    // bottom bulb up (right side)
+    for(let i=N;i>=0;i--){
+      const t = i/N;
+      const y = bulbBotY0 + t*(bulbBotY1-bulbBotY0);
+      const hw = bulbHW(1-t);
+      p.lineTo(cx+hw, y);
+    }
+    p.lineTo(cx+neckHW, neckY0);
+    // top bulb up (right side)
+    for(let i=N;i>=0;i--){
+      const t = i/N;
+      const y = bulbTopY0 + t*(bulbTopY1-bulbTopY0);
+      const hw = bulbHW(t);
+      p.lineTo(cx+hw, y);
+    }
+    p.lineTo(cx+capHW, capTopY0);
+    p.closePath();
+  }
+
+  function innerHWAt(y){
+    if(y <= bulbTopY1 && y >= bulbTopY0){
+      const t = (y-bulbTopY0)/(bulbTopY1-bulbTopY0);
+      return bulbHW(t);
+    }
+    if(y < bulbTopY0) return capHW;
+    if(y >= neckY0 && y <= neckY1) return neckHW;
+    if(y > neckY1 && y <= bulbBotY1){
+      const t = (y-bulbBotY0)/(bulbBotY1-bulbBotY0);
+      return bulbHW(1-t);
+    }
+    return capHW;
+  }
+
+  // ---- simulation state ----
+  let durationMs = 180000;
+  let elapsedMs = 0;
+  let running = false;
+  let started = false;
+  let lastT = null;
+  let flipped = false;
+
+  let drops = []; // {y, vy, x}
+  let splashes = []; // {x, startTime}
+  let lastDropTime = 0;
+  let surfacePhase = 0;
+
+  function fraction(){ return Math.min(1, elapsedMs/durationMs); }
+
+  function topSurfaceY(){
+    const f = fraction();
+    return capTopY0 + 10 + f*(neckY0 - (capTopY0+10));
+  }
+  function botSurfaceY(){
+    const f = fraction();
+    return capBotY1 - 10 - f*((capBotY1-10) - neckY1);
+  }
+
+  function reset(keepFlip){
+    elapsedMs = 0;
+    drops = [];
+    splashes = [];
+    running = false;
+    started = false;
+    playBtn.textContent = 'Pause';
+    updateLabels();
+  }
+
+  function formatTime(ms){
+    const remain = Math.max(0, durationMs - ms);
+    const s = Math.ceil(remain/1000);
+    const m = Math.floor(s/60);
+    const sec = s%60;
+    return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+  }
+
+  function updateLabels(){
+    timeLabel.textContent = formatTime(elapsedMs);
+    if(!started){
+      stateLabel.textContent = 'Resting — tap flip to pour';
+    } else if(fraction() >= 1){
+      stateLabel.textContent = 'Empty — flip to begin again';
+    } else if(running){
+      stateLabel.textContent = 'Pouring…';
+    } else {
+      stateLabel.textContent = 'Paused';
+    }
+  }
+
+  // ---- drawing ----
+  function drawGlassShell(){
+    ctx.save();
+    ctx.beginPath();
+    glassPath(ctx);
+    const grad = ctx.createLinearGradient(cx-capHW,0,cx+capHW,0);
+    grad.addColorStop(0,'rgba(191,227,232,0.10)');
+    grad.addColorStop(0.12,'rgba(255,255,255,0.22)');
+    grad.addColorStop(0.5,'rgba(191,227,232,0.04)');
+    grad.addColorStop(0.88,'rgba(255,255,255,0.16)');
+    grad.addColorStop(1,'rgba(191,227,232,0.10)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(191,227,232,0.55)';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawWaterRegion(topBound, bottomBound, surfaceY, waveAmp, t){
+    ctx.save();
+    ctx.beginPath();
+    glassPath(ctx);
+    ctx.clip();
+
+    ctx.beginPath();
+    const step = 6;
+    ctx.moveTo(cx-capHW-10, surfaceY);
+    for(let x=cx-capHW-10; x<=cx+capHW+10; x+=step){
+      const y = surfaceY + Math.sin(x*0.045 + t*2.4 + surfacePhase) * waveAmp;
+      ctx.lineTo(x,y);
+    }
+    ctx.lineTo(cx+capHW+10, bottomBound+20);
+    ctx.lineTo(cx-capHW-10, bottomBound+20);
+    ctx.closePath();
+
+    const wg = ctx.createLinearGradient(0, surfaceY, 0, bottomBound);
+    wg.addColorStop(0, 'rgba(127,219,255,0.55)');
+    wg.addColorStop(0.08, '#1c6e8c');
+    wg.addColorStop(1, '#0e3d52');
+    ctx.fillStyle = wg;
+    ctx.fill();
+
+    // surface highlight line
+    ctx.beginPath();
+    ctx.moveTo(cx-capHW-10, surfaceY);
+    for(let x=cx-capHW-10; x<=cx+capHW+10; x+=step){
+      const y = surfaceY + Math.sin(x*0.045 + t*2.4 + surfacePhase) * waveAmp;
+      ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle = 'rgba(204,243,255,0.55)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawStreamAndDrops(t){
+    const f = fraction();
+    if(f >= 1) return;
+    ctx.save();
+    ctx.beginPath();
+    glassPath(ctx);
+    ctx.clip();
+
+    // thin continuous stream through the neck
+    if(running){
+      const streamTop = topSurfaceY() < neckY0 ? neckY0 - 2 : topSurfaceY();
+      const streamBottom = neckY1 + 4;
+      ctx.beginPath();
+      ctx.moveTo(cx, streamTop);
+      for(let y=streamTop; y<=streamBottom; y+=4){
+        const wobble = Math.sin(y*0.3 + t*8) * 1.1;
+        ctx.lineTo(cx+wobble, y);
+      }
+      ctx.strokeStyle = 'rgba(180,232,245,0.85)';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // falling drops below the neck
+    drops.forEach(d=>{
+      ctx.beginPath();
+      ctx.ellipse(d.x, d.y, 3.2, 4.4, 0, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(160,224,240,0.92)';
+      ctx.fill();
+    });
+
+    // splashes
+    splashes.forEach(s=>{
+      const age = (t - s.startTime);
+      const life = 0.5;
+      if(age < life){
+        const r = 4 + age*40;
+        const alpha = 0.45*(1-age/life);
+        ctx.beginPath();
+        ctx.ellipse(s.x, s.y, r, r*0.32, 0, 0, Math.PI*2);
+        ctx.strokeStyle = `rgba(204,243,255,${alpha})`;
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+      }
+    });
+
+    ctx.restore();
+  }
+
+  function drawFrame(){
+    // wood caps
+    function woodCap(y0,y1, top){
+      ctx.save();
+      const grad = ctx.createLinearGradient(0,y0,0,y1);
+      grad.addColorStop(0,'#4a2d1c');
+      grad.addColorStop(0.5,'#2c1a10');
+      grad.addColorStop(1,'#1c100a');
+      ctx.fillStyle = grad;
+      const w = capHW + 34;
+      const h = y1-y0;
+      const r = 10;
+      ctx.beginPath();
+      ctx.moveTo(cx-w+r, y0);
+      ctx.arcTo(cx+w, y0, cx+w, y1, r);
+      ctx.arcTo(cx+w, y1, cx-w, y1, r);
+      ctx.arcTo(cx-w, y1, cx-w, y0, r);
+      ctx.arcTo(cx-w, y0, cx+w, y0, r);
+      ctx.closePath();
+      ctx.fill();
+      // brass inlay line
+      ctx.strokeStyle = 'rgba(214,168,92,0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+    woodCap(capTopY0-26, capTopY0+2, true);
+    woodCap(capBotY1-2, capBotY1+26, false);
+
+    // brass posts
+    [cx-capHW-26, cx+capHW-8].forEach(px=>{
+      const grad = ctx.createLinearGradient(px,0,px+16,0);
+      grad.addColorStop(0,'#a06a2c');
+      grad.addColorStop(0.5,'#e8c587');
+      grad.addColorStop(1,'#8a5a26');
+      ctx.fillStyle = grad;
+      ctx.fillRect(px, capTopY0-22, 16, (capBotY1+22)-(capTopY0-22));
+    });
+  }
+
+  function render(t){
+    ctx.clearRect(0,0,W,H);
+    drawFrame();
+    drawGlassShell();
+
+    const f = fraction();
+    const tsY = topSurfaceY();
+    const bsY = botSurfaceY();
+
+    // top water (shrinking)
+    if(tsY < neckY0 - 1){
+      drawWaterRegion(capTopY0, neckY0, tsY, running ? 1.6 : 0.4, t);
+    }
+    // bottom water (growing)
+    if(bsY < capBotY1 - 1){
+      drawWaterRegion(neckY1, capBotY1, bsY, running ? 1.4 : 0.3, t);
+    }
+
+    drawStreamAndDrops(t);
+
+    // glass rim highlights (drawn last, subtle)
+    ctx.save();
+    ctx.beginPath();
+    glassPath(ctx);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ---- animation loop ----
+  function tick(now){
+    if(lastT === null) lastT = now;
+    const dt = Math.min(64, now-lastT);
+    lastT = now;
+    const t = now/1000;
+
+    if(running && started && fraction() < 1){
+      elapsedMs += dt;
+
+      // spawn drops
+      if(now - lastDropTime > 180 + Math.random()*120){
+        lastDropTime = now;
+        drops.push({ x: cx + (Math.random()*2-1)*1.5, y: neckY1+4, vy: 0.3 });
+      }
+    }
+
+    // update drops physics regardless (let existing drops finish falling smoothly)
+    const bsY = botSurfaceY();
+    drops.forEach(d=>{
+      d.vy += 0.035*dt;
+      d.y += d.vy;
+    });
+    const arrived = drops.filter(d=> d.y >= bsY);
+    arrived.forEach(d=>{
+      splashes.push({x:d.x, y:bsY, startTime:t});
+    });
+    drops = drops.filter(d=> d.y < bsY);
+    splashes = splashes.filter(s=> (t - s.startTime) < 0.5);
+
+    if(fraction() >= 1){
+      running = false;
+    }
+
+    render(t);
+    updateLabels();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  // ---- controls ----
+  flipBtn.addEventListener('click', ()=>{
+    flipped = !flipped;
+    wrap.classList.toggle('flipped', flipped);
+    setTimeout(()=>{
+      reset();
+      running = true;
+      started = true;
+      playBtn.textContent = 'Pause';
+      updateLabels();
+    }, 550);
+  });
+
+  playBtn.addEventListener('click', ()=>{
+    if(!started){ started = true; running = true; }
+    else { running = !running; }
+    playBtn.textContent = running ? 'Pause' : 'Resume';
+    updateLabels();
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    reset();
+  });
+
+  durBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      durBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      durationMs = parseInt(btn.dataset.sec,10)*1000;
+      reset();
+    });
+  });
+
+  updateLabels();
+})();
+</script>
+
+</body>
+</html>

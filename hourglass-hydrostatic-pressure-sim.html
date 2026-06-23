@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hourglass Lab — Hydrostatic Pressure & Torricelli's Law</title>
+<style>
+  :root{
+    --paper:#f6f4ee;
+    --panel:#ffffff;
+    --ink:#22281f;
+    --ink-soft:#5b6358;
+    --line:#dcd8cc;
+    --water:#2e6fdb;
+    --water-soft:#bcd4f7;
+    --sand:#8a8276;
+    --sand-soft:#ddd6c8;
+    --amber:#c97a2b;
+    --amber-soft:#f3ddbd;
+    --good-shadow: 0 1px 2px rgba(34,40,31,0.06), 0 6px 16px rgba(34,40,31,0.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family: "Iowan Old Style","Palatino Linotype", Georgia, "Times New Roman", serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .mono{ font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+
+  header{
+    padding: 28px 24px 18px;
+    max-width: 1180px;
+    margin: 0 auto;
+    border-bottom: 1px solid var(--line);
+  }
+  .eyebrow{
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--amber);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  h1{
+    font-size: 28px;
+    margin: 0 0 6px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  header p{
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 15px;
+    max-width: 760px;
+    line-height: 1.5;
+  }
+
+  .toolbar{
+    max-width: 1180px;
+    margin: 16px auto 0;
+    padding: 0 24px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .toolbar .hint{
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+  .btn{
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    border: 1px solid var(--ink);
+    background: var(--panel);
+    color: var(--ink);
+    padding: 9px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.05s ease;
+  }
+  .btn:hover{ background: var(--ink); color: var(--paper); }
+  .btn:active{ transform: translateY(1px); }
+  .btn.active{ background: var(--amber); border-color: var(--amber); color: #fff; }
+  .btn:focus-visible{ outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  main{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 20px 24px 60px;
+    display:flex;
+    gap: 22px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: var(--good-shadow);
+    width: 480px;
+    max-width: 100%;
+    flex: 1 1 440px;
+    padding: 18px 18px 20px;
+    display:flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .panel-head{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .panel-title{
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .badge{
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+  }
+  .badge.water{ color: var(--water); }
+  .badge.sand{ color: var(--sand); }
+
+  .row{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .seg{
+    display:flex;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow:hidden;
+  }
+  .seg button{
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 12px;
+    padding: 7px 12px;
+    border: none;
+    background: var(--panel);
+    color: var(--ink-soft);
+    cursor:pointer;
+    border-right: 1px solid var(--line);
+  }
+  .seg button:last-child{ border-right:none; }
+  .seg button.on{ background: var(--ink); color: var(--paper); }
+  .seg button:focus-visible{ outline: 2px solid var(--amber); outline-offset: -2px; }
+
+  .toggle{
+    display:flex; align-items:center; gap:8px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    cursor:pointer;
+    user-select:none;
+  }
+  .toggle input{ accent-color: var(--amber); width:15px; height:15px; cursor:pointer; }
+  .toggle.disabled{ opacity: 0.35; pointer-events:none; }
+
+  .stage{
+    display:flex;
+    gap: 14px;
+    align-items:flex-start;
+  }
+  .glass-wrap{
+    flex: 0 0 auto;
+    background: linear-gradient(180deg, #fbfaf6, #f1efe6);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px;
+  }
+  svg.hourglass{ display:block; }
+
+  .readout{
+    flex: 1 1 auto;
+    display:flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 4px;
+  }
+  .readout-row{
+    display:flex;
+    justify-content: space-between;
+    font-size: 12px;
+    border-bottom: 1px dashed var(--line);
+    padding-bottom: 5px;
+  }
+  .readout-row .k{ color: var(--ink-soft); }
+  .readout-row .v{ font-family:"SFMono-Regular",Consolas,monospace; font-weight:600;}
+
+  .law-note{
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    background: var(--paper);
+    border-left: 3px solid var(--amber);
+    padding: 8px 10px;
+    border-radius: 0 4px 4px 0;
+  }
+  .law-note b{ color: var(--ink); }
+
+  .controls{
+    display:flex;
+    flex-direction: column;
+    gap: 10px;
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+  }
+  .speed-row{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+  .speed-row label{
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-family:"SFMono-Regular",Consolas,monospace;
+    white-space:nowrap;
+  }
+  input[type=range]{
+    flex:1;
+    accent-color: var(--amber);
+  }
+  .playbtns{ display:flex; gap:8px; }
+  .playbtns .btn{ flex:1; }
+  .iconbtn{ width: 18px; text-align:center; display:inline-block; }
+
+  .diagram{
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+    display:none;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .diagram.show{ display:flex; }
+  .chart-block{ display:flex; flex-direction:column; gap:4px; }
+  .chart-label{
+    font-size: 11px;
+    color: var(--ink-soft);
+    font-family:"SFMono-Regular",Consolas,monospace;
+    letter-spacing:0.04em;
+  }
+  canvas.chart{ width:100%; height:90px; display:block; border-radius:3px; }
+
+  .legend{
+    display:flex; gap:14px; font-size:11px; color:var(--ink-soft); font-family:"SFMono-Regular",Consolas,monospace;
+  }
+  .legend span{ display:flex; align-items:center; gap:5px;}
+  .swatch{ width:10px; height:3px; border-radius:2px; display:inline-block; }
+
+  footer{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px 50px;
+    color: var(--ink-soft);
+    font-size: 12.5px;
+    line-height:1.6;
+  }
+  footer h2{
+    font-size: 14px;
+    color: var(--ink);
+    margin: 18px 0 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Hydrostatic pressure · classroom demo</div>
+  <h1>Hourglass Lab</h1>
+  <p>A sand hourglass empties at a constant rate. A water hourglass doesn't — because the outflow speed depends on the height of water above the hole. That's <strong>Torricelli's law</strong>: v&nbsp;=&nbsp;√(2gh), a direct consequence of hydrostatic pressure increasing with depth. Compare the two below.</p>
+</header>
+
+<div class="toolbar">
+  <div class="hint">Tip: switch one panel to water and one to sand, run both, and watch the flow-rate graphs.</div>
+  <button class="btn" id="compareBtn">+ Compare side&nbsp;by&nbsp;side</button>
+</div>
+
+<main id="main"></main>
+
+<footer>
+  <h2>Why this happens</h2>
+  <p>In a granular material like sand, friction between grains forms a stable "arch" right at the opening. The arch sets the flow rate, and it doesn't care how tall the sand pile above it is — so the rate stays essentially constant until the chamber is empty. In a liquid there's no arch: pressure at the opening is hydrostatic, p&nbsp;=&nbsp;ρgh, and it pushes harder when the column is taller. Applying Bernoulli's equation between the free surface and the opening gives the efflux speed v&nbsp;=&nbsp;√(2gh) — Torricelli's law. As the water level h drops, the flow slows down, which is why a simple water hourglass (without a specially shaped, compensating bulb) is a poor clock: equal volumes do not drain in equal times.</p>
+</footer>
+
+<template id="panelTpl">
+  <section class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Hourglass <span class="panelIndex"></span></div>
+      <div class="badge" data-role="badge">SAND</div>
+    </div>
+
+    <div class="row">
+      <div class="seg" data-role="materialSeg">
+        <button data-val="sand" class="on">Sand</button>
+        <button data-val="water">Water</button>
+      </div>
+      <label class="toggle disabled" data-role="torriToggleWrap">
+        <input type="checkbox" data-role="torriToggle" checked>
+        Apply Torricelli's law
+      </label>
+    </div>
+    <div class="law-note" data-role="lawNote"></div>
+
+    <div class="stage">
+      <div class="glass-wrap">
+        <svg class="hourglass" data-role="svg" viewBox="0 0 200 320" width="200" height="320"></svg>
+      </div>
+      <div class="readout">
+        <div class="readout-row"><span class="k">elapsed time</span><span class="v" data-role="rTime">0.0 s</span></div>
+        <div class="readout-row"><span class="k">upper chamber</span><span class="v" data-role="rHeight">100 %</span></div>
+        <div class="readout-row"><span class="k">flow rate Q(t)</span><span class="v" data-role="rFlow">100 %</span></div>
+        <div class="readout-row"><span class="k">status</span><span class="v" data-role="rStatus">ready</span></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="speed-row">
+        <label>speed</label>
+        <input type="range" min="0.25" max="4" step="0.25" value="1" data-role="speed">
+        <label data-role="speedVal" class="mono">1.00×</label>
+      </div>
+      <div class="playbtns">
+        <button class="btn" data-role="playBtn"><span class="iconbtn">▶</span> Play</button>
+        <button class="btn" data-role="resetBtn"><span class="iconbtn">↺</span> Reset</button>
+        <button class="btn" data-role="diagBtn">Show diagram</button>
+      </div>
+    </div>
+
+    <div class="diagram" data-role="diagram">
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--ink)"></i> this run</span>
+        <span><i class="swatch" style="background:var(--line)"></i> full curve (reference)</span>
+      </div>
+      <div class="chart-block">
+        <div class="chart-label">UPPER CHAMBER HEIGHT vs TIME</div>
+        <canvas class="chart" data-role="chartHeight" width="600" height="180"></canvas>
+      </div>
+      <div class="chart-block">
+        <div class="chart-label">FLOW RATE vs TIME</div>
+        <canvas class="chart" data-role="chartFlow" width="600" height="180"></canvas>
+      </div>
+    </div>
+  </section>
+</template>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- physics ----------
+  // Normalized model: h0 = 1 (full upper chamber), Q0 = 1 (initial flow rate).
+  // Constant-rate regime (sand, or water WITHOUT Torricelli): empties in T_LIN seconds.
+  // Torricelli regime (real water): dh/dt = -k*sqrt(h); with matching initial rate,
+  // it empties in exactly 2*T_LIN seconds. Height ~ (1-t/T)^2 (parabola),
+  // flow rate ~ (1-t/T) (straight line decay).
+  const T_LIN = 18; // seconds at 1x speed for constant-rate drain
+
+  function computeState(material, torricelli, t){
+    const useTorricelli = (material === 'water' && torricelli);
+    const T = useTorricelli ? 2 * T_LIN : T_LIN;
+    let hFrac, Q;
+    if (t >= T){
+      hFrac = 0; Q = 0;
+    } else if (useTorricelli){
+      const frac = 1 - t / T;
+      hFrac = frac * frac;
+      Q = frac;
+    } else {
+      hFrac = 1 - t / T;
+      Q = 1;
+    }
+    return { hFrac, Q, T, drained: t >= T };
+  }
+
+  function sampleCurve(material, torricelli, steps, tMax){
+    const pts = [];
+    for (let i = 0; i <= steps; i++){
+      const t = (i / steps) * tMax;
+      pts.push({ t, ...computeState(material, torricelli, t) });
+    }
+    return pts;
+  }
+
+  // ---------- geometry (shared constants for the hourglass SVG) ----------
+  // The glass is a symmetric "bowtie": two triangles meeting at a single
+  // neck point. Both left and right edges run as diagonals from the rim
+  // down to that point, top and bottom bulbs alike.
+  const G = {
+    topY: 28, neckY: 160, baseY: 292,
+    cx: 100, halfW: 70
+  };
+
+  function widthAtUpper(y){ // y in [topY, neckY] -> glass width at that height
+    return 2 * G.halfW * (G.neckY - y) / (G.neckY - G.topY);
+  }
+  function widthAtLower(y){ // y in [neckY, baseY]
+    return 2 * G.halfW * (y - G.neckY) / (G.baseY - G.neckY);
+  }
+
+  function buildSVGFrame(svg){
+    const ns = "http://www.w3.org/2000/svg";
+    function el(tag, attrs){
+      const e = document.createElementNS(ns, tag);
+      for (const k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+    svg.innerHTML = "";
+
+    // Full glass silhouette: top-left -> top-right -> neck -> bottom-right
+    // -> bottom-left -> neck -> close. Tracing through the neck point twice
+    // is what makes this a correct, symmetric bowtie (both sides diagonal).
+    const bowtie = `M ${G.cx-G.halfW},${G.topY}
+      L ${G.cx+G.halfW},${G.topY}
+      L ${G.cx},${G.neckY}
+      L ${G.cx+G.halfW},${G.baseY}
+      L ${G.cx-G.halfW},${G.baseY}
+      L ${G.cx},${G.neckY} Z`;
+
+    // glass tint background
+    svg.appendChild(el('path', {d: bowtie, fill:'#eef1fb', 'fill-opacity':'0.5', stroke:'none'}));
+
+    // fill groups (filled in by update())
+    const fillUpper = el('polygon', {points:'', fill:'var(--sand)', stroke:'none'});
+    const fillLower = el('polygon', {points:'', fill:'var(--sand)', stroke:'none'});
+    fillUpper.setAttribute('data-part','fillUpper');
+    fillLower.setAttribute('data-part','fillLower');
+    svg.appendChild(fillUpper);
+    svg.appendChild(fillLower);
+
+    // particle layer
+    const particleLayer = el('g', {'data-part':'particles'});
+    svg.appendChild(particleLayer);
+
+    // outline (drawn on top, no fill) — same bowtie path, stroked
+    svg.appendChild(el('path', {d: bowtie, fill:'none', stroke:'#3a3a32', 'stroke-width':'2.5', 'stroke-linejoin':'round'}));
+    // small waist marker at the neck so the pinch point reads clearly
+    svg.appendChild(el('circle', {cx:G.cx, cy:G.neckY, r:3, fill:'#3a3a32'}));
+    // caps (the wooden/metal rims of the glass)
+    svg.appendChild(el('line', {x1:G.cx-G.halfW-8, y1:G.topY, x2:G.cx+G.halfW+8, y2:G.topY, stroke:'#3a3a32', 'stroke-width':'5', 'stroke-linecap':'round'}));
+    svg.appendChild(el('line', {x1:G.cx-G.halfW-8, y1:G.baseY, x2:G.cx+G.halfW+8, y2:G.baseY, stroke:'#3a3a32', 'stroke-width':'5', 'stroke-linecap':'round'}));
+
+    return {
+      fillUpper, fillLower, particleLayer
+    };
+  }
+
+  function updateFills(parts, hFrac, color){
+    const fillFrac = 1 - hFrac;
+    // upper: triangle apex at the neck point, level descends from topY to neckY
+    const yLevelU = G.neckY - (G.neckY - G.topY) * hFrac;
+    const wU = widthAtUpper(yLevelU);
+    parts.fillUpper.setAttribute('points',
+      `${G.cx-wU/2},${yLevelU} ${G.cx+wU/2},${yLevelU} ${G.cx},${G.neckY}`);
+    parts.fillUpper.setAttribute('fill', color);
+
+    // lower: fills from the base upward toward the neck point
+    const yLevelL = G.baseY - (G.baseY - G.neckY) * fillFrac;
+    const wL = widthAtLower(yLevelL);
+    parts.fillLower.setAttribute('points',
+      `${G.cx-wL/2},${yLevelL} ${G.cx+wL/2},${yLevelL} ${G.cx+G.halfW},${G.baseY} ${G.cx-G.halfW},${G.baseY}`);
+    parts.fillLower.setAttribute('fill', color);
+
+    return { yLevelL };
+  }
+
+  // ---------- chart drawing ----------
+  function drawChart(canvas, refPts, runPts, tMax, yKey, color){
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+    const padL = 34, padR = 10, padT = 10, padB = 22;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+
+    // axes
+    ctx.strokeStyle = '#cfcabb';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT); ctx.lineTo(padL, padT+plotH); ctx.lineTo(padL+plotW, padT+plotH);
+    ctx.stroke();
+
+    ctx.fillStyle = '#9a9686';
+    ctx.font = '11px monospace';
+    ctx.fillText('1.0', 4, padT+6);
+    ctx.fillText('0.0', 4, padT+plotH+4);
+    ctx.fillText('0', padL-2, padT+plotH+16);
+    ctx.fillText(tMax.toFixed(0)+'s', padL+plotW-22, padT+plotH+16);
+
+    function xy(t, v){
+      return [padL + (t/tMax)*plotW, padT + (1-v)*plotH];
+    }
+
+    // reference full curve (light)
+    ctx.strokeStyle = '#dcd8cc';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    refPts.forEach((p,i)=>{
+      const [x,y] = xy(p.t, p[yKey]);
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // active run curve up to current time (bold)
+    if (runPts.length > 1){
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      runPts.forEach((p,i)=>{
+        const [x,y] = xy(p.t, p[yKey]);
+        i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+
+      // current point marker
+      const last = runPts[runPts.length-1];
+      const [lx,ly] = xy(last.t, last[yKey]);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(lx, ly, 3.5, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // ---------- per-panel controller ----------
+  let panelCount = 0;
+  const DEFAULTS = [
+    { material:'sand', torricelli:true },
+    { material:'water', torricelli:true }
+  ];
+
+  function createPanel(presetIndex){
+    panelCount++;
+    const idx = panelCount;
+    const preset = DEFAULTS[presetIndex % DEFAULTS.length];
+
+    const tpl = document.getElementById('panelTpl');
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.querySelector('.panelIndex').textContent = '#' + idx;
+
+    const q = (role) => node.querySelector(`[data-role="${role}"]`);
+    const svg = q('svg');
+    const parts = buildSVGFrame(svg);
+
+    const state = {
+      material: preset.material,
+      torricelli: preset.torricelli,
+      t: 0,
+      running: false,
+      speed: 1,
+      runHistory: [],
+      lastFrame: null,
+      particles: [],
+      emitAccumulator: 0
+    };
+
+    function colorFor(){ return state.material === 'water' ? 'var(--water)' : 'var(--sand)'; }
+    function cssColor(){ return state.material === 'water' ? getCss('--water') : getCss('--sand'); }
+    function getCss(varName){
+      return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    }
+
+    function updateBadgeAndNote(){
+      const badge = q('badge');
+      badge.textContent = state.material === 'water' ? 'WATER' : 'SAND';
+      badge.className = 'badge ' + (state.material === 'water' ? 'water' : 'sand');
+
+      const wrap = q('torriToggleWrap');
+      if (state.material === 'water'){
+        wrap.classList.remove('disabled');
+      } else {
+        wrap.classList.add('disabled');
+      }
+
+      const note = q('lawNote');
+      if (state.material === 'sand'){
+        note.innerHTML = '<b>Constant-rate flow.</b> Friction arches the grains at the opening; the flow rate does not depend on how much sand is piled above it.';
+      } else if (state.torricelli){
+        note.innerHTML = '<b>Torricelli\'s law active.</b> v = √(2gh) — outflow speed falls as the water level drops, so the flow slows down over time.';
+      } else {
+        note.innerHTML = '<b>Idealized / theoretical case.</b> Torricelli\'s law switched off — outflow rate is forced constant, just like the sand case, for comparison.';
+      }
+    }
+
+    function resetRun(){
+      state.t = 0;
+      state.runHistory = [];
+      state.particles = [];
+      state.emitAccumulator = 0;
+      q('rStatus').textContent = state.running ? 'running' : 'ready';
+      render();
+    }
+
+    function render(){
+      const st = computeState(state.material, state.torricelli, state.t);
+      const color = cssColor();
+      const fillInfo = updateFills(parts, st.hFrac, color);
+
+      // readouts
+      q('rTime').textContent = state.t.toFixed(1) + ' s';
+      q('rHeight').textContent = Math.round(st.hFrac*100) + ' %';
+      q('rFlow').textContent = Math.round(st.Q*100) + ' %';
+      q('rStatus').textContent = st.drained ? 'empty' : (state.running ? 'running' : 'paused');
+
+      // particles physics step
+      stepParticles(st, fillInfo.yLevelL, color);
+
+      // history + charts
+      state.runHistory.push({ t: state.t, hFrac: st.hFrac, Q: st.Q });
+      if (diagramVisible) updateCharts();
+
+      return st;
+    }
+
+    function stepParticles(st, lowerLevelY, color){
+      const layer = parts.particleLayer;
+      // emit
+      const emitRate = st.Q * 14; // particles per second at full flow
+      state.emitAccumulator += emitRate * (lastDt || 0);
+      while (state.emitAccumulator >= 1 && !st.drained){
+        state.emitAccumulator -= 1;
+        state.particles.push({
+          x: G.cx + (Math.random()-0.5) * (state.material==='water' ? 2 : 6),
+          y: G.neckY + 1,
+          vy: state.material==='water' ? 180 : 140,
+          r: state.material==='water' ? 1.6 : 2.2
+        });
+      }
+      // advance + cull, draw
+      layer.innerHTML = '';
+      const ns = "http://www.w3.org/2000/svg";
+      const keep = [];
+      for (const p of state.particles){
+        p.y += p.vy * (lastDt || 0);
+        if (p.y < lowerLevelY - 1){
+          keep.push(p);
+          const c = document.createElementNS(ns, 'circle');
+          c.setAttribute('cx', p.x.toFixed(1));
+          c.setAttribute('cy', p.y.toFixed(1));
+          c.setAttribute('r', p.r);
+          c.setAttribute('fill', color);
+          layer.appendChild(c);
+        }
+      }
+      state.particles = keep;
+      // cap particle count for perf
+      if (state.particles.length > 260) state.particles.splice(0, state.particles.length-260);
+    }
+
+    let diagramVisible = false;
+    let refHeightPts = null, refFlowPts = null;
+    const CHART_TMAX = 2 * T_LIN;
+
+    function rebuildReference(){
+      refHeightPts = sampleCurve(state.material, state.torricelli, 120, CHART_TMAX);
+      refFlowPts = refHeightPts;
+    }
+
+    function updateCharts(){
+      if (!refHeightPts) rebuildReference();
+      drawChart(q('chartHeight'), refHeightPts, state.runHistory, CHART_TMAX, 'hFrac', colorRaw());
+      drawChart(q('chartFlow'), refFlowPts, state.runHistory, CHART_TMAX, 'Q', colorRaw());
+    }
+    function colorRaw(){
+      return state.material === 'water' ? getCss('--water') : getCss('--sand');
+    }
+
+    // ---------- controls wiring ----------
+    q('materialSeg').addEventListener('click', (e)=>{
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      [...q('materialSeg').children].forEach(b=>b.classList.toggle('on', b===btn));
+      state.material = btn.dataset.val;
+      updateBadgeAndNote();
+      rebuildReference();
+      resetRun();
+    });
+
+    q('torriToggle').addEventListener('change', (e)=>{
+      state.torricelli = e.target.checked;
+      updateBadgeAndNote();
+      rebuildReference();
+      resetRun();
+    });
+
+    q('speed').addEventListener('input', (e)=>{
+      state.speed = parseFloat(e.target.value);
+      q('speedVal').textContent = state.speed.toFixed(2) + '×';
+    });
+
+    q('playBtn').addEventListener('click', ()=>{
+      state.running = !state.running;
+      q('playBtn').innerHTML = state.running
+        ? '<span class="iconbtn">❚❚</span> Pause'
+        : '<span class="iconbtn">▶</span> Play';
+      q('playBtn').classList.toggle('active', state.running);
+      q('rStatus').textContent = state.running ? 'running' : 'paused';
+      lastFrameTime = null;
+    });
+
+    q('resetBtn').addEventListener('click', ()=>{
+      resetRun();
+    });
+
+    q('diagBtn').addEventListener('click', ()=>{
+      diagramVisible = !diagramVisible;
+      q('diagram').classList.toggle('show', diagramVisible);
+      q('diagBtn').textContent = diagramVisible ? 'Hide diagram' : 'Show diagram';
+      q('diagBtn').classList.toggle('active', diagramVisible);
+      if (diagramVisible){ rebuildReference(); updateCharts(); }
+    });
+
+    let lastFrameTime = null;
+    let lastDt = 0;
+
+    // initial UI state
+    [...q('materialSeg').children].forEach(b=>b.classList.toggle('on', b.dataset.val===state.material));
+    q('torriToggle').checked = state.torricelli;
+    updateBadgeAndNote();
+    render();
+
+    function tick(now){
+      if (!node.isConnected) return; // stop the loop once this panel is removed
+      if (lastFrameTime == null) lastFrameTime = now;
+      let dt = (now - lastFrameTime) / 1000;
+      lastFrameTime = now;
+      dt = Math.min(dt, 0.05); // clamp for tab-switch jumps
+      lastDt = state.running ? dt * state.speed : dt; // particles still ease even when paused-frame triggered render, but emit only if running below
+      if (state.running){
+        const st0 = computeState(state.material, state.torricelli, state.t);
+        if (!st0.drained){
+          state.t += dt * state.speed;
+        }
+      } else {
+        lastDt = 0;
+      }
+      render();
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    return node;
+  }
+
+  const main = document.getElementById('main');
+  main.appendChild(createPanel(0));
+
+  let sideBySide = false;
+  const compareBtn = document.getElementById('compareBtn');
+  compareBtn.addEventListener('click', ()=>{
+    sideBySide = !sideBySide;
+    if (sideBySide){
+      main.appendChild(createPanel(1));
+      compareBtn.textContent = '− Single hourglass';
+      compareBtn.classList.add('active');
+    } else {
+      // remove all but first panel
+      const panels = main.querySelectorAll('.panel');
+      panels.forEach((p,i)=>{ if(i>0) p.remove(); });
+      compareBtn.textContent = '+ Compare side by side';
+      compareBtn.classList.remove('active');
+    }
+  });
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Water Hourglass — Clepsydra Lab</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --bg:#0D1A20;
+  --panel:#122530;
+  --panel-light:#193243;
+  --line:#244353;
+  --chrome:#A9BFC6;
+  --chrome-bright:#E7F1F3;
+  --chrome-dim:#5E7780;
+  --glass-edge:rgba(220,240,245,0.35);
+  --water-1:#3FA0C9;
+  --water-2:#6FC6E0;
+  --water-deep:#1B5E7C;
+  --ink:#E7F1F3;
+  --ink-dim:#8FA6AC;
+  --warn:#E0A85E;
+  --rust:#C2614A;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:radial-gradient(ellipse at 50% -10%, #14313E 0%, var(--bg) 55%);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  padding:28px 18px 60px;
+}
+.wrap{max-width:1180px;margin:0 auto;}
+
+header{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  flex-wrap:wrap;gap:14px;
+  border-bottom:1px solid var(--line);
+  padding-bottom:16px;margin-bottom:22px;
+}
+.title-block{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;}
+h1{
+  font-family:'Fraunces',serif;font-weight:600;
+  font-size:clamp(28px,4vw,40px);letter-spacing:0.3px;margin:0;
+  color:var(--chrome-bright);
+}
+.subtitle{font-size:12.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--ink-dim);font-weight:500;}
+.meta-tag{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--chrome-dim);
+  border:1px solid var(--line);border-radius:3px;padding:3px 8px;
+}
+
+.main-grid{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:20px;align-items:start;}
+@media (max-width:880px){.main-grid{grid-template-columns:1fr;}}
+
+.panel{
+  background:linear-gradient(180deg,var(--panel-light),var(--panel));
+  border:1px solid var(--line);border-radius:10px;padding:18px;
+}
+.panel-title{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;
+  color:var(--chrome);margin:0 0 14px 0;display:flex;align-items:center;gap:8px;
+}
+.panel-title::after{content:'';flex:1;height:1px;background:var(--line);}
+
+.viz-panel{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.viz-stage{position:relative;width:100%;display:flex;justify-content:center;}
+#hourglassCanvas{
+  width:100%;max-width:340px;height:auto;display:block;
+  filter:drop-shadow(0 8px 18px rgba(0,0,0,0.5));
+  transition:transform 0.7s cubic-bezier(.5,-0.2,.5,1.2);
+}
+.flipping{transform:rotate(180deg);}
+.viz-controls-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%;}
+
+.btn{
+  font-family:'Inter',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.3px;
+  padding:9px 16px;border-radius:6px;border:1px solid var(--chrome-dim);
+  background:linear-gradient(180deg,#27424F,#152934);
+  color:var(--chrome-bright);cursor:pointer;transition:filter 0.15s, transform 0.1s;
+}
+.btn:hover{filter:brightness(1.25);}
+.btn:active{transform:translateY(1px);}
+.btn.secondary{border-color:var(--line);color:var(--ink-dim);background:linear-gradient(180deg,#16262E,#0F1D23);}
+.btn.secondary:hover{color:var(--ink);}
+
+.gauge-row{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:4px;}
+#gaugeCanvas{width:150px;height:96px;}
+.gauge-readout{text-align:left;}
+.gauge-readout .big{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--water-2);line-height:1;}
+.gauge-readout .lbl{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-dim);margin-top:4px;}
+
+.control{margin-bottom:18px;}
+.control:last-child{margin-bottom:0;}
+.control-label{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;}
+.control-label .val{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--water-2);font-weight:500;}
+.control-hint{font-size:11px;color:var(--ink-dim);margin-top:5px;line-height:1.5;}
+
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--line);outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--chrome-bright), var(--chrome-dim));
+  border:1px solid #3a525a;box-shadow:0 0 0 3px rgba(169,191,198,0.14);cursor:pointer;
+}
+input[type=range]::-moz-range-thumb{
+  width:16px;height:16px;border-radius:50%;border:1px solid #3a525a;
+  background:radial-gradient(circle at 35% 30%, var(--chrome-bright), var(--chrome-dim));cursor:pointer;
+}
+
+.preset-row{display:flex;gap:6px;margin-top:8px;}
+.preset-btn{
+  flex:1;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:6px 4px;border-radius:5px;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink-dim);cursor:pointer;text-align:center;
+}
+.preset-btn:hover{border-color:var(--chrome-dim);color:var(--chrome-bright);}
+.preset-btn.active{border-color:var(--chrome);color:var(--chrome-bright);background:var(--panel-light);}
+.apply-note{font-size:10.5px;color:var(--rust);opacity:0.85;margin-top:4px;}
+
+.readout-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+.readout{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px 11px;}
+.readout .lbl{font-size:10px;letter-spacing:0.8px;text-transform:uppercase;color:var(--ink-dim);}
+.readout .num{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;color:var(--ink);margin-top:2px;}
+.readout .num.accent{color:var(--warn);}
+.readout .num.accent2{color:var(--water-2);}
+
+.graphs-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;}
+@media (max-width:620px){.graphs-row{grid-template-columns:1fr;}}
+.graph-box canvas{width:100%;height:130px;display:block;}
+.graph-cap{font-size:11px;color:var(--ink-dim);text-align:center;margin-top:6px;font-family:'IBM Plex Mono',monospace;}
+
+.notes{margin-top:20px;}
+details{
+  background:linear-gradient(180deg,var(--panel-light),var(--panel));
+  border:1px solid var(--line);border-radius:9px;padding:14px 18px;margin-bottom:10px;
+}
+summary{
+  cursor:pointer;font-weight:600;font-size:14.5px;color:var(--chrome-bright);
+  font-family:'Fraunces',serif;list-style:none;display:flex;align-items:center;gap:10px;
+}
+summary::-webkit-details-marker{display:none;}
+summary::before{content:'+';font-family:'IBM Plex Mono',monospace;color:var(--chrome);width:18px;text-align:center;}
+details[open] summary::before{content:'–';}
+.note-body{margin-top:10px;font-size:13.5px;line-height:1.7;color:var(--ink-dim);max-width:760px;}
+.note-body strong{color:var(--ink);font-weight:600;}
+.note-body code{font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:var(--bg);padding:1px 5px;border-radius:3px;color:var(--water-2);}
+
+footer{margin-top:26px;text-align:center;font-size:11px;color:var(--ink-dim);opacity:0.6;font-family:'IBM Plex Mono',monospace;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <h1>Water Hourglass</h1>
+      <span class="subtitle">Clepsydra Lab</span>
+    </div>
+    <span class="meta-tag">single-file · canvas simulation</span>
+  </header>
+
+  <div class="main-grid">
+
+    <div class="panel viz-panel">
+      <p class="panel-title">Vessel</p>
+      <div class="viz-stage">
+        <canvas id="hourglassCanvas" width="340" height="520"></canvas>
+      </div>
+      <div class="viz-controls-row">
+        <button class="btn" id="flipBtn">⟲ Flip</button>
+        <button class="btn secondary" id="pauseBtn">Pause</button>
+        <button class="btn secondary" id="resetBtn">Reset</button>
+      </div>
+      <div class="gauge-row">
+        <canvas id="gaugeCanvas" width="300" height="192"></canvas>
+        <div class="gauge-readout">
+          <div class="big" id="flowBig">0.0</div>
+          <div class="lbl">mL / sec</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <div class="panel">
+        <p class="panel-title">Controls</p>
+
+        <div class="control">
+          <div class="control-label"><span>Water amount</span><span class="val" id="valAmount">65%</span></div>
+          <input type="range" id="amountSlider" min="20" max="90" value="65" step="1">
+          <div class="control-hint">Fraction of the upper bulb filled at the start.</div>
+        </div>
+
+        <div class="control">
+          <div class="control-label"><span>Hole diameter</span><span class="val" id="valHole">8 mm</span></div>
+          <input type="range" id="holeSlider" min="3" max="16" value="8" step="0.5">
+          <div class="control-hint">Sets the orifice at the neck. Flow rate scales with hole area, not its 2.5-power like sand.</div>
+          <div class="apply-note">Water amount / hole diameter apply on release and refill the vessel.</div>
+        </div>
+
+        <div class="control">
+          <div class="control-label"><span>Gravity</span><span class="val" id="valGravity">9.81 m/s²</span></div>
+          <input type="range" id="gravitySlider" min="1" max="25" value="9.81" step="0.01">
+          <div class="preset-row">
+            <button class="preset-btn" data-g="1.62">Moon</button>
+            <button class="preset-btn active" data-g="9.81">Earth</button>
+            <button class="preset-btn" data-g="24.79">Jupiter</button>
+          </div>
+          <div class="control-hint">Real surface gravity values — g enters Torricelli's law directly.</div>
+        </div>
+
+        <div class="control">
+          <div class="control-label"><span>Simulation speed</span><span class="val" id="valSpeed">1.0×</span></div>
+          <input type="range" id="speedSlider" min="25" max="400" value="100" step="5">
+          <div class="control-hint">Playback multiplier only — does not change the physics, just how fast you watch it.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Readouts</p>
+        <div class="readout-grid">
+          <div class="readout"><div class="lbl">Elapsed</div><div class="num" id="roTime">00:00</div></div>
+          <div class="readout"><div class="lbl">Initial volume</div><div class="num" id="roTotal">—</div></div>
+          <div class="readout"><div class="lbl">In top bulb</div><div class="num accent2" id="roTop">—</div></div>
+          <div class="readout"><div class="lbl">In bottom bulb</div><div class="num accent" id="roBottom">—</div></div>
+          <div class="readout"><div class="lbl">Head height</div><div class="num" id="roHead">—</div></div>
+          <div class="readout"><div class="lbl">Est. total time</div><div class="num" id="roEst">—</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">Live Graphs</p>
+        <div class="graphs-row">
+          <div class="graph-box">
+            <canvas id="flowGraph" width="320" height="130"></canvas>
+            <div class="graph-cap">flow rate vs. time (mL/s)</div>
+          </div>
+          <div class="graph-box">
+            <canvas id="headGraph" width="320" height="130"></canvas>
+            <div class="graph-cap">head height in top bulb (cm)</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="notes">
+    <details open>
+      <summary>Why does the flow slow down over time?</summary>
+      <div class="note-body">
+        Watch the flow-rate graph: it starts at its highest value and curves downward the whole way, unlike a
+        granular hourglass where the rate stays flat almost to the end. That's because liquid flow through an
+        orifice is driven by pressure, and the pressure at the hole depends on how tall the column of water
+        sitting above it is — its <strong>head height</strong>. This is <strong>Torricelli's law</strong>:
+        the exit speed of the water is <code>v = √(2·g·h)</code>, where <code>h</code> is the head height. As the
+        top bulb drains, <code>h</code> shrinks, so the exit speed — and therefore the flow rate — shrinks with
+        it. A water clock is consequently a much less reliable timer than a sand one, which is part of why sand
+        hourglasses won out historically for measuring fixed intervals.
+      </div>
+    </details>
+    <details>
+      <summary>Where does √(2gh) come from?</summary>
+      <div class="note-body">
+        It falls straight out of energy conservation. A parcel of water at the surface, height <code>h</code>
+        above the hole, has gravitational potential energy <code>m·g·h</code>. By the time it reaches the orifice
+        it has converted essentially all of that into kinetic energy, <code>½·m·v²</code>. Setting them equal and
+        solving for <code>v</code> gives <code>v = √(2gh)</code> — the same speed an object would reach falling
+        from rest through height <code>h</code>. The actual flow rate is then <code>Q = Cd·A·√(2gh)</code>, where
+        <code>A</code> is the orifice area and <code>Cd</code> is a discharge coefficient (around 0.6 here) that
+        accounts for the jet narrowing slightly as it exits — a real effect called the <strong>vena
+        contracta</strong>.
+      </div>
+    </details>
+    <details>
+      <summary>Why hole size matters differently than for sand</summary>
+      <div class="note-body">
+        For this liquid model, flow rate scales directly with orifice <em>area</em> — double the hole's radius
+        and you roughly quadruple the flow (<code>A ∝ d²</code>). That's a much gentler relationship than dry
+        granular flow, where the empirical Beverloo correlation gives something closer to
+        <code>Q ∝ (D − k·d)^2.5</code> — a steeper, more sensitive dependence caused by grains jamming and
+        arching near the edges of the opening in a way a continuous fluid simply doesn't.
+      </div>
+    </details>
+    <details>
+      <summary>About this simulation</summary>
+      <div class="note-body">
+        The vessel's volume-vs-height relationship is computed by numerically integrating its true tapered
+        cross-section (treating the glass as a solid of revolution), so the head height used in Torricelli's law
+        comes from the vessel's actual shape rather than a flat-tank approximation. Each frame, the simulation
+        solves <code>dV/dt = −Cd·A·√(2gh)</code> directly rather than playing back a precomputed curve, so
+        changing gravity or hole size mid-run produces a genuinely different trajectory. The estimated total
+        drain time is likewise found by numerically fast-forwarding the same equation, not by a constant-rate
+        guess — which is why it updates as the flow itself decelerates.
+      </div>
+    </details>
+  </div>
+
+  <footer>water-hourglass-lab · single HTML file, no dependencies</footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ===================== CANVAS / GEOMETRY =====================
+  const hgCanvas = document.getElementById('hourglassCanvas');
+  const hctx = hgCanvas.getContext('2d');
+  const CW = hgCanvas.width, CH = hgCanvas.height;
+
+  const GLASS_LEFT = 60, GLASS_RIGHT = 280;
+  const GLASS_TOP = 46, GLASS_BOTTOM = 472;
+  const GLASS_W = GLASS_RIGHT - GLASS_LEFT;
+  const GLASS_H = GLASS_BOTTOM - GLASS_TOP;
+  const CENTER_X = (GLASS_LEFT + GLASS_RIGHT) / 2;
+  const MAX_HALF_W = GLASS_W / 2;
+  const SHAPE_EXP = 1.55;
+  const BAND_THRESH = 0.05;
+
+  const REAL_TOTAL_HEIGHT = 0.16; // metres, full interior height (top brim to bottom tip)
+  const SCALE_M = REAL_TOTAL_HEIGHT / GLASS_H; // metres per pixel, applied uniformly
+  const CD = 0.62; // discharge coefficient (sharp-edged orifice)
+
+  // ===================== STATE =====================
+  let neckWidthFrac = 0.18;
+  let holeDiameterMM = 8;
+  let amountFrac = 0.65;
+  let gValue = 9.81;
+  let speedMult = 1.0;
+  let running = true;
+
+  let topTable, bottomTable, topCapacity, bottomCapacity; // m^3
+  let V_top = 0, V_bottom = 0; // m^3
+  let simTimeSec = 0;
+  let accumulator = 0;
+  const STEP_DT = 1/60;
+  const MAX_STEPS_PER_FRAME = 10;
+
+  let currentFlow_m3s = 0; // m^3/s
+  let lastSampleTime = 0;
+  let flowHistory = [];
+  let headHistory = [];
+  let maxFlowSeen = 1e-7;
+
+  let droplets = [];
+  let wavePhase = 0;
+
+  // ===================== GEOMETRY PROFILE =====================
+  function halfWidthAtT(t){
+    const d = Math.abs(t - 0.5) * 2;
+    const neckHalf = neckWidthFrac * MAX_HALF_W;
+    if (d <= BAND_THRESH) return neckHalf;
+    const dd = (d - BAND_THRESH) / (1 - BAND_THRESH);
+    return neckHalf + (MAX_HALF_W - neckHalf) * Math.pow(dd, SHAPE_EXP);
+  }
+  function yAtT(t){ return GLASS_TOP + t*GLASS_H; }
+
+  // ===================== VOLUME TABLES =====================
+  function computeTables(){
+    const N = 300;
+    let tArrTop=[0.5], vArrTop=[0], acc=0;
+    for (let i=1;i<=N;i++){
+      const t0 = 0.5 - (i-1)/N*0.5;
+      const t1 = 0.5 - i/N*0.5;
+      const rMid = halfWidthAtT((t0+t1)/2) * SCALE_M;
+      const dh = (t0-t1) * REAL_TOTAL_HEIGHT;
+      acc += Math.PI*rMid*rMid*dh;
+      tArrTop.push(t1); vArrTop.push(acc);
+    }
+    topTable = {t:tArrTop, v:vArrTop};
+    topCapacity = acc;
+
+    let tArrBot=[1.0], vArrBot=[0]; acc=0;
+    for (let i=1;i<=N;i++){
+      const t0 = 1.0 - (i-1)/N*0.5;
+      const t1 = 1.0 - i/N*0.5;
+      const rMid = halfWidthAtT((t0+t1)/2) * SCALE_M;
+      const dh = (t0-t1) * REAL_TOTAL_HEIGHT;
+      acc += Math.PI*rMid*rMid*dh;
+      tArrBot.push(t1); vArrBot.push(acc);
+    }
+    bottomTable = {t:tArrBot, v:vArrBot};
+    bottomCapacity = acc;
+  }
+
+  function lookupT(table, Vtarget){
+    const v = table.v, t = table.t;
+    if (Vtarget<=0) return t[0];
+    if (Vtarget>=v[v.length-1]) return t[t.length-1];
+    let lo=0, hi=v.length-1;
+    while (hi-lo>1){ const mid=(lo+hi)>>1; if (v[mid]<=Vtarget) lo=mid; else hi=mid; }
+    const frac = (Vtarget-v[lo])/(v[hi]-v[lo]);
+    return t[lo] + (t[hi]-t[lo])*frac;
+  }
+
+  // ===================== PHYSICS =====================
+  function holeRadiusM(){ return (holeDiameterMM/1000)/2; }
+
+  function odeStep(dt){
+    if (V_top<=1e-9){ currentFlow_m3s = 0; return; }
+    const surfaceT = lookupT(topTable, V_top);
+    const h = Math.max(0, (0.5-surfaceT)*REAL_TOTAL_HEIGHT);
+    const A = Math.PI*holeRadiusM()*holeRadiusM();
+    const Q = CD*A*Math.sqrt(2*gValue*Math.max(h,0));
+    let dV = Q*dt;
+    if (dV>V_top) dV=V_top;
+    V_top -= dV;
+    V_bottom = Math.min(bottomCapacity, V_bottom+dV);
+    currentFlow_m3s = Q;
+  }
+
+  function estimateRemainingTime(){
+    let vt = V_top, t = 0;
+    const dt = 0.08;
+    let iter = 0;
+    while (vt>1e-7 && iter<30000){
+      const surfaceT = lookupT(topTable, vt);
+      const h = Math.max(0, (0.5-surfaceT)*REAL_TOTAL_HEIGHT);
+      const A = Math.PI*holeRadiusM()*holeRadiusM();
+      const Q = CD*A*Math.sqrt(2*gValue*h);
+      if (Q<=1e-12) break;
+      let dV = Q*dt;
+      if (dV>vt) dV=vt;
+      vt -= dV; t += dt; iter++;
+    }
+    return t;
+  }
+
+  // ===================== SETUP / RESET =====================
+  function regenerate(){
+    neckWidthFrac = Math.min(0.34, Math.max(0.05, holeDiameterMM/45));
+    computeTables();
+    V_top = topCapacity*amountFrac;
+    V_bottom = 0;
+    resetCounters();
+  }
+  function resetCounters(){
+    simTimeSec=0; accumulator=0; lastSampleTime=0;
+    flowHistory=[]; headHistory=[]; currentFlow_m3s=0; maxFlowSeen=1e-7;
+    droplets=[];
+  }
+
+  // ===================== RENDER =====================
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function drawFrame(ctx){
+    ctx.clearRect(0,0,CW,CH);
+    const capGrad = ctx.createLinearGradient(0,0,0,30);
+    capGrad.addColorStop(0,'#E7F1F3'); capGrad.addColorStop(0.5,'#94ABB2'); capGrad.addColorStop(1,'#5E7780');
+    ctx.fillStyle = capGrad;
+    roundRect(ctx, GLASS_LEFT-22, GLASS_TOP-26, GLASS_W+44, 26, 6); ctx.fill();
+    roundRect(ctx, GLASS_LEFT-22, GLASS_BOTTOM, GLASS_W+44, 26, 6); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.35)'; ctx.lineWidth=1;
+    roundRect(ctx, GLASS_LEFT-22, GLASS_TOP-26, GLASS_W+44, 26, 6); ctx.stroke();
+    roundRect(ctx, GLASS_LEFT-22, GLASS_BOTTOM, GLASS_W+44, 26, 6); ctx.stroke();
+
+    ctx.fillStyle='#7E939A';
+    [GLASS_LEFT-16, GLASS_RIGHT+10].forEach(x=>{ ctx.fillRect(x, GLASS_TOP-2, 6, GLASS_H+4); });
+
+    ctx.fillStyle='#1B2C33';
+    [[GLASS_LEFT-12,GLASS_TOP-14],[GLASS_RIGHT+14,GLASS_TOP-14],
+     [GLASS_LEFT-12,GLASS_BOTTOM+14],[GLASS_RIGHT+14,GLASS_BOTTOM+14]].forEach(p=>{
+      ctx.beginPath(); ctx.arc(p[0],p[1],3,0,Math.PI*2); ctx.fill();
+    });
+  }
+
+  function glassPathPoints(tFrom,tTo){
+    const N=60; const left=[]; const right=[];
+    for (let i=0;i<=N;i++){
+      const t = tFrom + (tTo-tFrom)*i/N;
+      const y = yAtT(t); const hw = halfWidthAtT(t);
+      left.push([CENTER_X-hw,y]); right.push([CENTER_X+hw,y]);
+    }
+    return {left,right};
+  }
+
+  function drawGlass(ctx){
+    const p = glassPathPoints(0,1);
+    ctx.beginPath();
+    p.left.forEach((pt,i)=>{ if(i===0) ctx.moveTo(pt[0],pt[1]); else ctx.lineTo(pt[0],pt[1]); });
+    for (let i=p.right.length-1;i>=0;i--) ctx.lineTo(p.right[i][0],p.right[i][1]);
+    ctx.closePath();
+    ctx.fillStyle='rgba(160,210,225,0.04)'; ctx.fill();
+    ctx.strokeStyle='rgba(220,240,245,0.4)'; ctx.lineWidth=1.6; ctx.stroke();
+
+    ctx.beginPath();
+    p.left.forEach((pt,i)=>{
+      const x = CENTER_X-(CENTER_X-pt[0])*0.6;
+      if(i===0) ctx.moveTo(x,pt[1]); else ctx.lineTo(x,pt[1]);
+    });
+    ctx.strokeStyle='rgba(255,255,255,0.10)'; ctx.lineWidth=2.4; ctx.stroke();
+  }
+
+  function clipChamber(ctx,tFrom,tTo){
+    const p = glassPathPoints(tFrom,tTo);
+    ctx.beginPath();
+    p.left.forEach((pt,i)=>{ if(i===0) ctx.moveTo(pt[0],pt[1]); else ctx.lineTo(pt[0],pt[1]); });
+    for (let i=p.right.length-1;i>=0;i--) ctx.lineTo(p.right[i][0],p.right[i][1]);
+    ctx.closePath();
+    ctx.clip();
+  }
+
+  function fillWavy(ctx, surfaceY, bottomY, color1, color2){
+    const W = CW;
+    ctx.beginPath();
+    const N=24;
+    for (let i=0;i<=N;i++){
+      const x = i/N*W;
+      const y = surfaceY + Math.sin(x*0.07 + wavePhase)*2.2;
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.lineTo(W,bottomY); ctx.lineTo(0,bottomY); ctx.closePath();
+    const grad = ctx.createLinearGradient(0,surfaceY,0,bottomY);
+    grad.addColorStop(0,color2); grad.addColorStop(1,color1);
+    ctx.fillStyle = grad; ctx.fill();
+  }
+
+  function drawWater(ctx){
+    const surfaceT_top = lookupT(topTable, V_top);
+    const surfaceT_bot = lookupT(bottomTable, V_bottom);
+
+    if (V_top>1e-9){
+      ctx.save();
+      clipChamber(ctx,0,0.5);
+      fillWavy(ctx, yAtT(surfaceT_top), yAtT(0.5)+4, 'rgba(27,94,124,0.85)', 'rgba(111,198,224,0.85)');
+      ctx.restore();
+    }
+    if (V_bottom>1e-9){
+      ctx.save();
+      clipChamber(ctx,0.5,1.0);
+      fillWavy(ctx, yAtT(surfaceT_bot), yAtT(1.0)+4, 'rgba(27,94,124,0.9)', 'rgba(63,160,201,0.9)');
+      ctx.restore();
+    }
+
+    // stream / droplets through the neck
+    if (currentFlow_m3s>1e-9 && Math.random()<0.6){
+      droplets.push({x: CENTER_X+(Math.random()-0.5)*4, y: yAtT(0.5)-2, vy: 60+Math.random()*40});
+    }
+    ctx.fillStyle='rgba(111,198,224,0.85)';
+    droplets.forEach(d=>{
+      ctx.beginPath(); ctx.arc(d.x,d.y,1.8,0,Math.PI*2); ctx.fill();
+    });
+    const bottomSurfaceY = V_bottom>1e-9 ? yAtT(surfaceT_bot) : yAtT(1.0);
+    droplets = droplets.filter(d=> d.y < bottomSurfaceY+6);
+  }
+
+  function updateDroplets(dt){
+    droplets.forEach(d=>{ d.y += d.vy*dt; d.vy += 220*dt; });
+  }
+
+  function renderHourglass(){
+    drawFrame(hctx);
+    drawGlass(hctx);
+    drawWater(hctx);
+    drawGlass(hctx);
+  }
+
+  // ===================== GAUGE =====================
+  const gaugeCanvas = document.getElementById('gaugeCanvas');
+  const gctx = gaugeCanvas.getContext('2d');
+  function renderGauge(){
+    const W=gaugeCanvas.width, H=gaugeCanvas.height;
+    gctx.clearRect(0,0,W,H);
+    const cx=W/2, cy=H-10, R=Math.min(W,H*1.7)/2-14;
+    const flowMLs = currentFlow_m3s*1e6;
+    const maxMLs = maxFlowSeen*1e6;
+    const scaleMax = Math.max(2, Math.ceil(maxMLs*1.25));
+
+    gctx.lineWidth=10; gctx.lineCap='round'; gctx.strokeStyle='#1E3640';
+    gctx.beginPath(); gctx.arc(cx,cy,R,Math.PI,2*Math.PI); gctx.stroke();
+
+    const frac = Math.min(1, flowMLs/scaleMax);
+    const ang = Math.PI + frac*Math.PI;
+    const grad = gctx.createLinearGradient(cx-R,0,cx+R,0);
+    grad.addColorStop(0,'#1B5E7C'); grad.addColorStop(1,'#6FC6E0');
+    gctx.strokeStyle=grad;
+    gctx.beginPath(); gctx.arc(cx,cy,R,Math.PI,ang); gctx.stroke();
+
+    gctx.lineWidth=1.5; gctx.strokeStyle='#3C5A64'; gctx.font='10px IBM Plex Mono';
+    gctx.fillStyle='#8FA6AC'; gctx.textAlign='center';
+    for (let i=0;i<=4;i++){
+      const a = Math.PI + (i/4)*Math.PI;
+      const x1=cx+Math.cos(a)*(R+8), y1=cy+Math.sin(a)*(R+8);
+      const x2=cx+Math.cos(a)*(R+2), y2=cy+Math.sin(a)*(R+2);
+      gctx.beginPath(); gctx.moveTo(x1,y1); gctx.lineTo(x2,y2); gctx.stroke();
+    }
+    gctx.fillText('0', cx-R-2, cy+14);
+    gctx.fillText(scaleMax.toFixed(0), cx+R+2, cy+14);
+
+    gctx.strokeStyle='#E7F1F3'; gctx.lineWidth=2.5;
+    gctx.beginPath(); gctx.moveTo(cx,cy);
+    gctx.lineTo(cx+Math.cos(ang)*(R-6), cy+Math.sin(ang)*(R-6)); gctx.stroke();
+    gctx.fillStyle='#E7F1F3'; gctx.beginPath(); gctx.arc(cx,cy,4,0,Math.PI*2); gctx.fill();
+  }
+
+  // ===================== GRAPHS =====================
+  const flowGraphCanvas = document.getElementById('flowGraph');
+  const headGraphCanvas = document.getElementById('headGraph');
+  const fgctx = flowGraphCanvas.getContext('2d');
+  const hgctx = headGraphCanvas.getContext('2d');
+
+  function drawLineGraph(ctx, canvas, data, color, yLabelFmt){
+    const W=canvas.width, H=canvas.height;
+    const padL=34, padR=10, padT=10, padB=18;
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='#244353'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,H-padB); ctx.lineTo(W-padR,H-padB); ctx.stroke();
+
+    if (data.length<2){
+      ctx.fillStyle='#41606b'; ctx.font='11px IBM Plex Mono'; ctx.textAlign='center';
+      ctx.fillText('collecting data…', W/2, H/2);
+      return;
+    }
+    const tMin=data[0].t, tMax=data[data.length-1].t;
+    let vMax=0; data.forEach(p=>{ if(p.v>vMax) vMax=p.v; });
+    vMax = Math.max(vMax*1.15, 0.5);
+
+    ctx.strokeStyle='rgba(255,255,255,0.05)';
+    ctx.fillStyle='#6F8A91'; ctx.font='9.5px IBM Plex Mono'; ctx.textAlign='right';
+    ctx.fillStyle='#6F8A91';
+    for (let i=0;i<=3;i++){
+      const yy = padT + (1-i/3)*(H-padT-padB);
+      ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke();
+      ctx.fillText(yLabelFmt(vMax*i/3), padL-4, yy+3);
+    }
+
+    ctx.strokeStyle=color; ctx.lineWidth=1.8; ctx.beginPath();
+    data.forEach((p,i)=>{
+      const x = padL + (tMax>tMin ? (p.t-tMin)/(tMax-tMin) : 0)*(W-padL-padR);
+      const y = padT + (1-p.v/vMax)*(H-padT-padB);
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = color+'33';
+    ctx.lineTo(padL+(W-padL-padR), H-padB);
+    ctx.lineTo(padL, H-padB);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle='#6F8A91'; ctx.textAlign='left'; ctx.fillText('0s', padL, H-4);
+    ctx.textAlign='right'; ctx.fillText(tMax.toFixed(0)+'s', W-padR, H-4);
+  }
+
+  function renderGraphs(){
+    drawLineGraph(fgctx, flowGraphCanvas, flowHistory, '#6FC6E0', v=>v.toFixed(1));
+    drawLineGraph(hgctx, headGraphCanvas, headHistory, '#E0A85E', v=>v.toFixed(1));
+  }
+
+  // ===================== READOUTS =====================
+  const roTime=document.getElementById('roTime');
+  const roTotal=document.getElementById('roTotal');
+  const roTop=document.getElementById('roTop');
+  const roBottom=document.getElementById('roBottom');
+  const roHead=document.getElementById('roHead');
+  const roEst=document.getElementById('roEst');
+  const flowBig=document.getElementById('flowBig');
+
+  function fmtTime(s){
+    const m=Math.floor(s/60), sec=Math.floor(s%60);
+    return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+  }
+  function mL(v_m3){ return (v_m3*1e6); }
+
+  let lastEstimate = 0, lastEstimateAt = -10;
+
+  function updateReadouts(){
+    roTime.textContent = fmtTime(simTimeSec);
+    roTotal.textContent = mL(topCapacity*amountFrac).toFixed(0)+' mL';
+    roTop.textContent = mL(V_top).toFixed(0)+' mL';
+    roBottom.textContent = mL(V_bottom).toFixed(0)+' mL';
+    const surfaceT = lookupT(topTable, V_top);
+    const h = Math.max(0,(0.5-surfaceT)*REAL_TOTAL_HEIGHT);
+    roHead.textContent = (h*100).toFixed(1)+' cm';
+
+    if (simTimeSec - lastEstimateAt > 1.0){
+      lastEstimate = estimateRemainingTime();
+      lastEstimateAt = simTimeSec;
+    }
+    if (V_top<=1e-9){
+      roEst.textContent = fmtTime(simTimeSec)+' (done)';
+    } else {
+      roEst.textContent = fmtTime(simTimeSec+lastEstimate)+' total';
+    }
+    flowBig.textContent = (currentFlow_m3s*1e6).toFixed(1);
+  }
+
+  // ===================== MAIN LOOP =====================
+  let lastTs=null;
+  function frame(ts){
+    if (lastTs===null) lastTs=ts;
+    let dt=(ts-lastTs)/1000; lastTs=ts; dt=Math.min(dt,0.05);
+
+    if (running){
+      const scaledDt = dt*speedMult;
+      accumulator += scaledDt;
+      let steps=0;
+      while (accumulator>=STEP_DT && steps<MAX_STEPS_PER_FRAME){
+        odeStep(STEP_DT);
+        accumulator -= STEP_DT;
+        simTimeSec += STEP_DT;
+        steps++;
+      }
+      updateDroplets(scaledDt);
+      wavePhase += dt*1.4;
+
+      if (currentFlow_m3s>maxFlowSeen) maxFlowSeen=currentFlow_m3s;
+
+      if (simTimeSec-lastSampleTime>=0.4){
+        const surfaceT = lookupT(topTable, V_top);
+        const h = Math.max(0,(0.5-surfaceT)*REAL_TOTAL_HEIGHT);
+        flowHistory.push({t:simTimeSec, v:currentFlow_m3s*1e6});
+        headHistory.push({t:simTimeSec, v:h*100});
+        if (flowHistory.length>500){ flowHistory.shift(); headHistory.shift(); }
+        lastSampleTime = simTimeSec;
+      }
+    }
+
+    renderHourglass();
+    renderGauge();
+    renderGraphs();
+    updateReadouts();
+
+    requestAnimationFrame(frame);
+  }
+
+  // ===================== UI WIRING =====================
+  const amountSlider=document.getElementById('amountSlider');
+  const holeSlider=document.getElementById('holeSlider');
+  const gravitySlider=document.getElementById('gravitySlider');
+  const speedSlider=document.getElementById('speedSlider');
+  const valAmount=document.getElementById('valAmount');
+  const valHole=document.getElementById('valHole');
+  const valGravity=document.getElementById('valGravity');
+  const valSpeed=document.getElementById('valSpeed');
+
+  amountSlider.addEventListener('input', ()=>{ valAmount.textContent = amountSlider.value+'%'; });
+  amountSlider.addEventListener('change', ()=>{ amountFrac=(+amountSlider.value)/100; regenerate(); });
+
+  holeSlider.addEventListener('input', ()=>{ valHole.textContent = (+holeSlider.value).toFixed(1)+' mm'; });
+  holeSlider.addEventListener('change', ()=>{ holeDiameterMM=+holeSlider.value; regenerate(); });
+
+  function setGravity(g){
+    gValue=g; gravitySlider.value=g;
+    valGravity.textContent = g.toFixed(2)+' m/s²';
+    document.querySelectorAll('.preset-btn').forEach(b=>{
+      b.classList.toggle('active', Math.abs(+b.dataset.g-g)<0.05);
+    });
+  }
+  gravitySlider.addEventListener('input', ()=> setGravity(+gravitySlider.value));
+  document.querySelectorAll('.preset-btn').forEach(b=>{
+    b.addEventListener('click', ()=> setGravity(+b.dataset.g));
+  });
+
+  function setSpeed(v){
+    speedMult=v/100; speedSlider.value=v;
+    valSpeed.textContent = speedMult.toFixed(2)+'×';
+  }
+  speedSlider.addEventListener('input', ()=> setSpeed(+speedSlider.value));
+
+  document.getElementById('pauseBtn').addEventListener('click', function(){
+    running=!running; this.textContent = running ? 'Pause':'Play';
+  });
+  document.getElementById('resetBtn').addEventListener('click', ()=>{ regenerate(); });
+
+  document.getElementById('flipBtn').addEventListener('click', ()=>{
+    hgCanvas.classList.add('flipping');
+    setTimeout(()=>{
+      const tmp=V_top; V_top=V_bottom; V_bottom=tmp;
+      resetCounters();
+      hgCanvas.classList.remove('flipping');
+    },650);
+  });
+
+  // ===================== INIT =====================
+  setGravity(9.81);
+  setSpeed(100);
+  regenerate();
+  requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
