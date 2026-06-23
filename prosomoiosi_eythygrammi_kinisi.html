@@ -5,111 +5,180 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Προσομοίωση Ευθύγραμμης Κίνησης</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+:root {
+  --bg-page:   #dde3ea;       /* σελίδα: μεσαίο γκρι-μπλε */
+  --bg-panel:  #eef1f5;       /* panels/controls */
+  --bg-stage:  #ffffff;       /* σκηνή: λευκό */
+  --text:      #1a1a1a;
+  --text2:     #5a6070;
+  --border:    rgba(0,0,0,0.14);
+  --border2:   rgba(0,0,0,0.24);
+  --ctrl-bg:   #e0e4ea;
+  --ctrl-border: #b8bfc9;
+  --info-bg:   #daeaf8; --info-text: #0f4a80; --info-border: #8dbde8;
+  --danger-bg: #fce8e8; --danger-text: #9b2020;
+  --radius:    7px; --radius-lg: 12px;
+  --stage-shadow: 0 2px 12px rgba(0,0,0,0.18);
+}
+
+@media (prefers-color-scheme: dark) {
   :root {
-    --bg: #ffffff; --bg2: #f5f5f3;
-    --text: #1a1a1a; --text2: #666;
-    --border: rgba(0,0,0,0.15); --border2: rgba(0,0,0,0.25);
-    --info-bg: #e6f1fb; --info-text: #185fa5; --info-border: #b5d4f4;
-    --danger-bg: #fcebeb; --danger-text: #a32d2d;
-    --radius: 8px; --radius-lg: 12px;
+    --bg-page:  #1a1d23;
+    --bg-panel: #23272f;
+    --bg-stage: #2c3040;
+    --text:     #e8eaf0;
+    --text2:    #8892a4;
+    --border:   rgba(255,255,255,0.10);
+    --border2:  rgba(255,255,255,0.20);
+    --ctrl-bg:  #2c3040;
+    --ctrl-border: #404760;
+    --info-bg:  #0c2a44; --info-text: #7ab8f0; --info-border: #2060a0;
+    --danger-bg:#3a1a1a; --danger-text:#f09595;
+    --stage-shadow: 0 2px 16px rgba(0,0,0,0.5);
   }
+}
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1e1e1e; --bg2: #2a2a2a;
-      --text: #e8e8e8; --text2: #999;
-      --border: rgba(255,255,255,0.12); --border2: rgba(255,255,255,0.25);
-      --info-bg: #0c2a44; --info-text: #85b7eb; --info-border: #185fa5;
-      --danger-bg: #3a1a1a; --danger-text: #f09595;
-    }
-  }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg-page);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 1.4rem 1rem;
+}
 
-  body {
-    font-family: system-ui, -apple-system, sans-serif;
-    background: var(--bg); color: var(--text);
-    min-height: 100vh;
-    display: flex; flex-direction: column; align-items: center;
-    padding: 1.5rem 1rem;
-  }
+h1 { font-size: 17px; font-weight: 600; margin-bottom: 1rem; text-align: center; color: var(--text); }
 
-  h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.25rem; text-align: center; }
+.sim-wrap { width: 100%; max-width: 720px; }
 
-  .sim-wrap { width: 100%; max-width: 720px; }
+/* ── Controls ── */
+.ctrl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
 
-  .ctrl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.ctrl-box {
+  background: var(--ctrl-bg);
+  border: 1px solid var(--ctrl-border);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+}
 
-  .ctrl-box, .speed-box {
-    background: var(--bg2); border: 0.5px solid var(--border);
-    border-radius: var(--radius); padding: 10px 12px;
-  }
-  .speed-box { margin-bottom: 10px; }
+.ctrl-label { font-size: 11px; color: var(--text2); margin-bottom: 3px; font-weight: 500; }
 
-  .ctrl-label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
-  .ctrl-row { display: flex; align-items: center; gap: 8px; }
-  .ctrl-row input[type=range] { flex: 1; accent-color: #378ADD; }
-  .ctrl-val { font-size: 13px; font-weight: 500; min-width: 52px; text-align: right; }
+.ctrl-row { display: flex; align-items: center; gap: 7px; }
+.ctrl-row input[type=range] {
+  flex: 1; accent-color: #5580aa;
+  height: 3px; cursor: pointer;
+}
+.ctrl-val { font-size: 12px; font-weight: 600; min-width: 44px; text-align: right; color: var(--text); }
 
-  .stage-wrap {
-    background: var(--bg2); border: 0.5px solid var(--border);
-    border-radius: var(--radius-lg); padding: 12px;
-    margin-bottom: 10px; cursor: crosshair; position: relative;
-  }
+/* Speed buttons */
+.speed-box {
+  background: var(--ctrl-bg);
+  border: 1px solid var(--ctrl-border);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.speed-label { font-size: 11px; color: var(--text2); white-space: nowrap; font-weight: 500; }
+.speed-btns  { display: flex; gap: 6px; }
+.speed-btn {
+  padding: 3px 14px;
+  border: 1px solid var(--ctrl-border);
+  border-radius: 5px;
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 12px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: background 0.12s;
+}
+.speed-btn:hover { background: var(--bg-stage); }
+.speed-btn.sel {
+  background: #5580aa;
+  color: #ffffff;
+  border-color: #3a6090;
+  font-weight: 700;
+}
 
-  canvas { display: block; width: 100%; border-radius: 6px; }
+/* ── Stage ── */
+.stage-wrap {
+  background: var(--bg-stage);
+  border: 2px solid #a0aabb;
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  margin-bottom: 10px;
+  cursor: crosshair;
+  position: relative;
+  box-shadow: var(--stage-shadow);
+}
 
-  .bottom-row { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; flex-wrap: wrap; }
+canvas { display: block; width: 100%; border-radius: 5px; }
 
-  .time-display {
-    background: var(--bg2); border: 0.5px solid var(--border);
-    border-radius: var(--radius); padding: 8px 16px;
-    display: flex; align-items: baseline; gap: 8px;
-  }
-  .time-label { font-size: 12px; color: var(--text2); }
-  .time-val   { font-size: 22px; font-weight: 500; }
+/* Bottom row */
+.bottom-row { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
 
-  .vel-card {
-    background: var(--bg2); border: 0.5px solid var(--border);
-    border-radius: var(--radius); padding: 8px 14px;
-    display: flex; align-items: center; gap: 10px;
-  }
-  .vel-label { font-size: 12px; color: var(--text2); }
-  .vel-val   { font-size: 18px; font-weight: 500; }
+.time-display {
+  background: var(--bg-panel); border: 1px solid var(--ctrl-border);
+  border-radius: var(--radius); padding: 6px 14px;
+  display: flex; align-items: baseline; gap: 7px;
+}
+.time-label { font-size: 11px; color: var(--text2); font-weight: 500; }
+.time-val   { font-size: 20px; font-weight: 600; color: var(--text); }
 
-  .btn-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.vel-card {
+  background: var(--bg-panel); border: 1px solid var(--ctrl-border);
+  border-radius: var(--radius); padding: 6px 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.vel-label { font-size: 11px; color: var(--text2); font-weight: 500; }
+.vel-val   { font-size: 17px; font-weight: 600; color: var(--text); }
 
-  button {
-    padding: 6px 16px; border: 0.5px solid var(--border2);
-    border-radius: var(--radius); background: var(--bg); color: var(--text);
-    font-size: 13px; cursor: pointer; font-family: inherit; transition: background 0.15s;
-  }
-  button:hover  { background: var(--bg2); }
-  button:active { transform: scale(0.98); }
-  button.active  { background: var(--info-bg);  color: var(--info-text);  border-color: var(--info-border); }
-  button.toggled { color: var(--text2); border-style: dashed; }
+/* Buttons */
+.btn-row { display: flex; gap: 7px; margin-bottom: 8px; flex-wrap: wrap; }
 
-  .log-wrap {
-    background: var(--bg2); border: 0.5px solid var(--border);
-    border-radius: var(--radius-lg); padding: 10px 12px;
-    max-height: 200px; overflow-y: auto;
-  }
-  .log-title {
-    font-size: 12px; color: var(--text2); margin-bottom: 6px;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .col-toggle-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
-  .col-toggle-label { font-size: 12px; color: var(--text2); }
+button {
+  padding: 5px 14px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  background: var(--bg-panel); color: var(--text);
+  font-size: 12px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: background 0.12s;
+}
+button:hover  { background: var(--bg-stage); }
+button:active { transform: scale(0.97); }
+button.active  {
+  background: var(--info-bg);
+  color: var(--info-text);
+  border-color: var(--info-border);
+  font-weight: 600;
+}
+button.toggled { color: var(--text2); border-style: dashed; }
 
-  .log-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .log-table th {
-    color: var(--text2); text-align: left; padding: 2px 6px;
-    border-bottom: 0.5px solid var(--border); font-weight: 400;
-  }
-  .log-table td { padding: 3px 6px; border-bottom: 0.5px solid var(--border); }
-  .col-v-h.hidden { display: none; }
+/* Log */
+.log-wrap {
+  background: var(--bg-panel); border: 1px solid var(--ctrl-border);
+  border-radius: var(--radius-lg); padding: 9px 11px;
+  max-height: 190px; overflow-y: auto;
+}
+.log-title {
+  font-size: 11px; color: var(--text2); margin-bottom: 5px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-weight: 500;
+}
+.col-toggle-row { display: flex; gap: 7px; margin-bottom: 7px; align-items: center; }
+.col-toggle-label { font-size: 11px; color: var(--text2); }
 
-  @media (max-width: 480px) { .ctrl-grid { grid-template-columns: 1fr; } }
+.log-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.log-table th {
+  color: var(--text2); text-align: left; padding: 2px 5px;
+  border-bottom: 1px solid var(--ctrl-border); font-weight: 500;
+}
+.log-table td { padding: 3px 5px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+.col-v-h.hidden { display: none; }
+
+@media (max-width: 480px) { .ctrl-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -121,7 +190,7 @@
     <div class="ctrl-box">
       <div class="ctrl-label">Αρχική ταχύτητα v₀ (m/s)</div>
       <div class="ctrl-row">
-        <input type="range" id="v0" min="-15" max="15" step="0.5" value="0">
+        <input type="range" id="v0" min="-10" max="10" step="0.5" value="0">
         <span class="ctrl-val" id="v0-val">0.0</span>
       </div>
     </div>
@@ -142,22 +211,23 @@
     <div class="ctrl-box">
       <div class="ctrl-label">Μάζα m (kg)</div>
       <div class="ctrl-row">
-        <input type="range" id="mass" min="0.5" max="10" step="0.5" value="2">
-        <span class="ctrl-val" id="mass-val">2.0</span>
+        <input type="range" id="mass" min="0.5" max="3" step="0.5" value="1">
+        <span class="ctrl-val" id="mass-val">1.0</span>
       </div>
     </div>
   </div>
 
   <div class="speed-box">
-    <div class="ctrl-label">Ταχύτητα προσομοίωσης</div>
-    <div class="ctrl-row">
-      <input type="range" id="simspeed" min="0.05" max="1" step="0.05" value="1">
-      <span class="ctrl-val" id="simspeed-val">×1.00</span>
+    <span class="speed-label">Ταχύτητα προσομοίωσης:</span>
+    <div class="speed-btns">
+      <button class="speed-btn" data-speed="0.5">50%</button>
+      <button class="speed-btn" data-speed="0.75">75%</button>
+      <button class="speed-btn sel" data-speed="1">100%</button>
     </div>
   </div>
 
   <div class="stage-wrap" id="stage-wrap">
-    <canvas id="canvas" height="170"></canvas>
+    <canvas id="canvas" height="165"></canvas>
   </div>
 
   <div class="bottom-row">
@@ -183,11 +253,11 @@
   <div class="log-wrap">
     <div class="log-title">
       <span>Καταγεγραμμένες μετρήσεις <span style="color:var(--text2)">(κλικ στη σκηνή)</span></span>
-      <span id="log-count" style="font-weight:500">0 σημεία</span>
+      <span id="log-count" style="font-weight:600">0 σημεία</span>
     </div>
     <div class="col-toggle-row">
       <span class="col-toggle-label">Στήλη v:</span>
-      <button id="tog-v-log" class="toggled" style="padding:3px 10px;font-size:11px">κρυφή</button>
+      <button id="tog-v-log" class="toggled" style="padding:2px 9px;font-size:11px">κρυφή</button>
     </div>
     <table class="log-table">
       <thead><tr>
@@ -231,21 +301,19 @@ function computeAccel(v, angle, mu, mass){
 }
 
 function isFS(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function isDark(){ return window.matchMedia('(prefers-color-scheme:dark)').matches; }
 
 function resize(){
   if(isFS()){
     canvas.width  = window.screen.width;
     canvas.height = window.screen.height;
   } else {
-    canvas.width  = canvas.parentElement.offsetWidth - 24;
-    canvas.height = 170;
+    canvas.width  = canvas.parentElement.offsetWidth - 20;
+    canvas.height = 165;
   }
 }
 
-function isDark(){ return window.matchMedia('(prefers-color-scheme:dark)').matches; }
-
-/* Rounded rectangle helper */
-function roundRect(ctx, x, y, w, h, r){
+function rr(x,y,w,h,r){
   ctx.beginPath();
   ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
   ctx.quadraticCurveTo(x+w,y,x+w,y+r);
@@ -260,82 +328,93 @@ function draw(){
   const W    = canvas.width, H = canvas.height;
   const dark = isDark();
   const fs   = isFS();
+
   ctx.clearRect(0,0,W,H);
 
-  if(fs){ ctx.fillStyle='#111'; ctx.fillRect(0,0,W,H); }
+  /* Stage background — white (light) or dark-blue (dark), same in fullscreen */
+  const stageBg  = dark ? '#2c3040' : '#ffffff';
+  const trackCol = dark ? '#7080a0' : '#8899bb';
+  const tickCol  = dark ? '#4a5570' : '#aabbcc';
+  const textCol  = dark ? '#c0c8d8' : '#334466';
 
-  const trackCol = dark||fs ? '#666' : '#999';
-  const tickCol  = dark||fs ? '#555' : '#bbb';
-  const textCol  = dark||fs ? '#ccc' : '#444';
-  const fontSize = fs ? 16 : 10;
+  ctx.fillStyle = stageBg;
+  ctx.fillRect(0,0,W,H);
 
+  /* Border in fullscreen */
+  if(fs){
+    ctx.strokeStyle = dark ? '#404760' : '#a0aabb';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1,1,W-2,H-2);
+  }
+
+  const fSz      = fs ? 16 : 10;
   const rad      = p.angle * Math.PI / 180;
   const trackLen = W * 0.88;
   const maxX     = 18;
   const pxPerM   = (trackLen * 0.82) / (maxX * 2);
-  const centerY  = fs ? H * 0.55 : H/2 + 10;
+  const centerY  = fs ? H * 0.50 : H/2 + 6;
 
   ctx.save();
   ctx.translate(W/2, centerY);
   ctx.rotate(rad);
 
-  /* Track */
+  /* Track line */
   ctx.strokeStyle=trackCol; ctx.lineWidth=fs?3:2;
   ctx.beginPath(); ctx.moveTo(-trackLen/2,0); ctx.lineTo(trackLen/2,0); ctx.stroke();
 
   /* Ticks + labels */
   ctx.strokeStyle=tickCol; ctx.lineWidth=1;
-  ctx.fillStyle=textCol; ctx.font=fontSize+'px system-ui,sans-serif'; ctx.textAlign='center';
+  ctx.fillStyle=textCol;
+  ctx.font=fSz+'px system-ui,sans-serif'; ctx.textAlign='center';
   for(let xi=-maxX; xi<=maxX; xi+=3){
     const px=xi*pxPerM;
     if(Math.abs(px)>trackLen/2-5) continue;
-    ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,fs?10:8); ctx.stroke();
-    ctx.fillText(xi, px, fs?26:20);
+    ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,fs?10:7); ctx.stroke();
+    ctx.fillText(xi, px, fs?26:19);
   }
-
-  ctx.strokeStyle=dark||fs?'#888':'#aaa'; ctx.lineWidth=1.5;
+  ctx.strokeStyle=dark?'#6070a0':'#99aacc'; ctx.lineWidth=1.5;
   ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(0,6); ctx.stroke();
-  ctx.fillStyle=textCol; ctx.fillText('0',0,fs?26:20);
+  ctx.fillStyle=textCol; ctx.fillText('0',0,fs?26:19);
 
-  ctx.textAlign='right'; ctx.fillStyle=dark||fs?'#777':'#aaa';
-  ctx.font=fontSize+'px system-ui,sans-serif';
+  ctx.textAlign='right'; ctx.fillStyle=tickCol;
+  ctx.font=fSz+'px system-ui,sans-serif';
   ctx.fillText('x (m)', trackLen/2, -6);
 
   /* Object */
   const objPx = Math.max(-trackLen/2+20, Math.min(trackLen/2-20, state.x*pxPerM));
-  const bw = fs?48:28, bh = fs?32:20;
+  const bw=fs?48:26, bh=fs?30:18;
 
-  ctx.strokeStyle='#378ADD'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.strokeStyle='#4488cc'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
   ctx.beginPath(); ctx.moveTo(objPx,2); ctx.lineTo(objPx,0); ctx.stroke();
   ctx.setLineDash([]);
 
   ctx.save();
-  ctx.translate(objPx, -bh-(fs?28:16));
-  ctx.fillStyle='#185FA5';
-  ctx.font=(fs?16:11)+'px system-ui,sans-serif'; ctx.textAlign='center';
-  ctx.fillText('x = '+state.x.toFixed(2)+' m', 0, 0);
+  ctx.translate(objPx,-bh-(fs?28:14));
+  ctx.fillStyle='#1a5fa0';
+  ctx.font=(fs?15:10)+'px system-ui,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('x = '+state.x.toFixed(2)+' m',0,0);
   ctx.restore();
 
   ctx.save();
   ctx.translate(objPx,-bh/2);
-  ctx.fillStyle='#378ADD'; ctx.strokeStyle='#185FA5'; ctx.lineWidth=1.5;
+  ctx.fillStyle='#3a7acc'; ctx.strokeStyle='#1a5fa0'; ctx.lineWidth=1.5;
   ctx.fillRect(-bw/2,-bh/2,bw,bh);
   ctx.strokeRect(-bw/2,-bh/2,bw,bh);
-  ctx.fillStyle='#fff';
-  ctx.font=(fs?14:10)+'px system-ui,sans-serif';
+  ctx.fillStyle='#ffffff';
+  ctx.font=(fs?13:9)+'px system-ui,sans-serif';
   ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText('m',0,0);
 
   if(state.running && Math.abs(state.v)>0.05){
-    const arrowLen=Math.min(fs?80:60, Math.abs(state.v)*4);
+    const al=Math.min(fs?80:55, Math.abs(state.v)*4);
     const dir=Math.sign(state.v);
-    const startX=dir*(bw/2+2);
-    ctx.strokeStyle='#639922'; ctx.fillStyle='#639922'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.moveTo(startX,0); ctx.lineTo(startX+dir*arrowLen,0); ctx.stroke();
+    const sx=dir*(bw/2+2);
+    ctx.strokeStyle='#4a9020'; ctx.fillStyle='#4a9020'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(sx,0); ctx.lineTo(sx+dir*al,0); ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(startX+dir*arrowLen+dir*6,0);
-    ctx.lineTo(startX+dir*arrowLen-dir*5,-5);
-    ctx.lineTo(startX+dir*arrowLen-dir*5,5);
+    ctx.moveTo(sx+dir*al+dir*6,0);
+    ctx.lineTo(sx+dir*al-dir*5,-5);
+    ctx.lineTo(sx+dir*al-dir*5,5);
     ctx.closePath(); ctx.fill();
   }
   ctx.restore();
@@ -344,34 +423,46 @@ function draw(){
   /* ── Fullscreen overlays ── */
   if(fs){
     /* Chronometer — bottom centre */
-    const tStr = state.t.toFixed(2);
-    ctx.save();
-    roundRect(ctx, W/2-90, H-90, 180, 64, 12);
-    ctx.fillStyle='rgba(20,20,20,0.82)'; ctx.fill();
-    ctx.fillStyle='#aaa'; ctx.font='14px system-ui,sans-serif'; ctx.textAlign='center';
-    ctx.fillText('t (s)', W/2, H-64);
-    ctx.fillStyle='#fff'; ctx.font='bold 36px system-ui,sans-serif';
-    ctx.fillText(tStr, W/2, H-30);
-    ctx.restore();
+    const cw=200, ch=72, cx2=W/2-cw/2, cy2=H-ch-20;
+    rr(ctx, cx2, cy2, cw, ch, 12);
+    ctx.fillStyle = dark ? 'rgba(20,25,40,0.90)' : 'rgba(240,244,252,0.92)';
+    ctx.fill();
+    ctx.strokeStyle = dark?'#404760':'#a0aabb'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle = dark?'#8892a4':'#5a6070';
+    ctx.font='13px system-ui,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('t (s)', W/2, cy2+22);
+    ctx.fillStyle = dark?'#e8eaf0':'#1a1a1a';
+    ctx.font='bold 36px system-ui,sans-serif';
+    ctx.fillText(state.t.toFixed(2), W/2, cy2+60);
 
-    /* Slow motion badge — top left */
+    /* Control bar */
+    const barW=440, barH=52, bx=W/2-barW/2, by=cy2-barH-14;
+    rr(ctx, bx, by, barW, barH, 10);
+    ctx.fillStyle = dark?'rgba(20,25,40,0.88)':'rgba(240,244,252,0.92)';
+    ctx.fill();
+    ctx.strokeStyle=dark?'#404760':'#a0aabb'; ctx.lineWidth=1; ctx.stroke();
+
+    /* All FS buttons: light background, black text */
+    const btnBg = '#e8ecf2';
+    const btnFg = '#111111';
+    drawFSBtn(W/2-200, by+10, 88,  32, state.running?'⏸ Παύση':'▶ Play',           btnBg, btnFg);
+    drawFSBtn(W/2-100, by+10, 90,  32, '↺ Restart',                                 btnBg, btnFg);
+    drawFSBtn(W/2+0,   by+10, 108, 32, state.logMode?'🔴 Stop log':'📋 Log κλικ',  state.logMode?'#f5d0d0':btnBg, btnFg);
+
+    /* Slow motion badge */
     if(simSpeed < 1){
-      ctx.save();
-      roundRect(ctx, 14, 14, 110, 30, 7);
-      ctx.fillStyle='rgba(186,117,23,0.88)'; ctx.fill();
-      ctx.fillStyle='#fff'; ctx.font='bold 13px system-ui,sans-serif'; ctx.textAlign='left';
+      rr(ctx,14,14,116,30,7);
+      ctx.fillStyle='rgba(160,90,0,0.90)'; ctx.fill();
+      ctx.fillStyle='#ffffff'; ctx.font='bold 13px system-ui,sans-serif'; ctx.textAlign='left';
       ctx.fillText('× '+simSpeed.toFixed(2)+' speed', 24, 33);
-      ctx.restore();
     }
   } else {
-    /* Normal mode slow motion badge */
+    /* Normal slow motion badge */
     if(simSpeed < 1){
-      ctx.save();
-      roundRect(ctx, 10, 10, 104, 26, 6);
-      ctx.fillStyle='rgba(186,117,23,0.88)'; ctx.fill();
-      ctx.fillStyle='#fff'; ctx.font='bold 11px system-ui,sans-serif'; ctx.textAlign='left';
-      ctx.fillText('× '+simSpeed.toFixed(2)+' speed', 18, 27);
-      ctx.restore();
+      rr(ctx,8,8,108,26,6);
+      ctx.fillStyle='rgba(160,90,0,0.90)'; ctx.fill();
+      ctx.fillStyle='#ffffff'; ctx.font='bold 11px system-ui,sans-serif'; ctx.textAlign='left';
+      ctx.fillText('× '+simSpeed.toFixed(2)+' speed', 16, 25);
     }
   }
 
@@ -379,12 +470,31 @@ function draw(){
   document.getElementById('disp-v').textContent = state.v.toFixed(2);
 }
 
+function drawFSBtn(x, y, w, h, label, bg, fg){
+  rr(ctx, x, y, w, h, 7);
+  ctx.fillStyle=bg; ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle=fg; ctx.font='bold 13px system-ui,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(label, x+w/2, y+h/2);
+  ctx.textBaseline='alphabetic';
+}
+
+function getFSBtnRects(W,H){
+  const barH=52, ch=72, cy2=H-ch-20, by=cy2-barH-14;
+  return [
+    {id:'play',    x:W/2-200, y:by+10, w:88,  h:32},
+    {id:'restart', x:W/2-100, y:by+10, w:90,  h:32},
+    {id:'log',     x:W/2+0,   y:by+10, w:108, h:32},
+  ];
+}
+
+/* ── Sim loop ── */
 function simStep(ts){
   if(!state.running) return;
   if(lastTime===null) lastTime=ts;
-  const realDt = Math.min((ts-lastTime)/1000, 0.05);
+  const dt=Math.min((ts-lastTime)/1000,0.05)*simSpeed;
   lastTime=ts;
-  const dt = realDt * simSpeed;
 
   const p=getParams();
   const a=computeAccel(state.v,p.angle,p.mu,p.mass);
@@ -393,23 +503,19 @@ function simStep(ts){
 
   if(Math.abs(prevV)>0.001 && Math.sign(state.v)!==Math.sign(prevV)){
     state.v=0;
-    if(computeAccel(0,p.angle,p.mu,p.mass)===0){
-      state.running=false;
-      document.getElementById('btn-start').textContent='▶ Εκκίνηση';
-      document.getElementById('btn-start').classList.add('active');
-    }
+    if(computeAccel(0,p.angle,p.mu,p.mass)===0){ state.running=false; syncStartBtn(); }
   }
-
   state.x+=state.v*dt; state.t+=dt;
-
-  if(Math.abs(state.x)>30){
-    state.running=false;
-    document.getElementById('btn-start').textContent='▶ Εκκίνηση';
-    document.getElementById('btn-start').classList.add('active');
-  }
+  if(Math.abs(state.x)>30){ state.running=false; syncStartBtn(); }
 
   draw();
   if(state.running) animId=requestAnimationFrame(simStep);
+}
+
+function syncStartBtn(){
+  const btn=document.getElementById('btn-start');
+  btn.textContent=state.running?'⏸ Παύση':(state.t>0?'▶ Συνέχεια':'▶ Εκκίνηση');
+  btn.classList.toggle('active',!state.running);
 }
 
 function resetSim(){
@@ -417,15 +523,36 @@ function resetSim(){
   animId=null; lastTime=null;
   const p=getParams();
   state={x:0,v:p.v0,t:0,running:false,logMode:state.logMode};
-  document.getElementById('btn-start').textContent='▶ Εκκίνηση';
-  document.getElementById('btn-start').classList.add('active');
-  draw();
+  syncStartBtn(); draw();
 }
 
 function clearLog(){
   logData=[];
   document.getElementById('log-body').innerHTML='';
   document.getElementById('log-count').textContent='0 σημεία';
+}
+
+function toggleRun(){
+  if(state.running){
+    state.running=false;
+    if(animId) cancelAnimationFrame(animId);
+    animId=null; lastTime=null;
+  } else {
+    if(state.t===0){const p=getParams();state.v=p.v0;}
+    state.running=true;
+    lastTime=null; animId=requestAnimationFrame(simStep);
+  }
+  syncStartBtn();
+}
+
+function toggleLog(){
+  state.logMode=!state.logMode;
+  const btn=document.getElementById('btn-log');
+  btn.textContent       =state.logMode?'🔴 Ακύρωση καταγραφής':'📋 Καταγραφή κλικ';
+  btn.style.background  =state.logMode?'var(--danger-bg)':'';
+  btn.style.color       =state.logMode?'var(--danger-text)':'';
+  btn.style.borderColor =state.logMode?'var(--danger-text)':'';
+  if(!state.running) draw();
 }
 
 function applyVelVis(){
@@ -443,72 +570,67 @@ function applyVLogVis(){
   btn.classList.toggle('active',showVLog);
 }
 
-/* Fullscreen */
-document.getElementById('btn-fullscreen').addEventListener('click',function(){
-  const el=document.getElementById('stage-wrap');
-  if(!isFS()){
-    (el.requestFullscreen||el.webkitRequestFullscreen).call(el);
-  } else {
-    (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+/* Canvas click */
+canvas.addEventListener('click',function(e){
+  if(isFS()){
+    const rect=canvas.getBoundingClientRect();
+    const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+    const cx=(e.clientX-rect.left)*sx, cy=(e.clientY-rect.top)*sy;
+    for(const b of getFSBtnRects(canvas.width,canvas.height)){
+      if(cx>=b.x&&cx<=b.x+b.w&&cy>=b.y&&cy<=b.y+b.h){
+        if(b.id==='play')    { toggleRun(); draw(); return; }
+        if(b.id==='restart') { resetSim(); return; }
+        if(b.id==='log')     { toggleLog(); return; }
+      }
+    }
+    if(state.logMode) addLogPoint();
+    return;
   }
+  if(state.logMode) addLogPoint();
 });
 
-function onFSChange(){
-  document.getElementById('btn-fullscreen').textContent = isFS() ? '✕ Έξοδος' : '⛶ Πλήρης οθόνη';
-  setTimeout(()=>{ resize(); draw(); }, 60);
-}
-document.addEventListener('fullscreenchange', onFSChange);
-document.addEventListener('webkitfullscreenchange', onFSChange);
-
-/* Slow motion */
-document.getElementById('simspeed').addEventListener('input',function(){
-  simSpeed=parseFloat(this.value);
-  document.getElementById('simspeed-val').textContent='×'+simSpeed.toFixed(2);
-  if(!state.running) draw();
-});
-
-document.getElementById('btn-tog-v').addEventListener('click',()=>{showVel=!showVel;applyVelVis();});
-document.getElementById('tog-v-log').addEventListener('click',()=>{showVLog=!showVLog;applyVLogVis();});
-
-document.getElementById('btn-start').addEventListener('click',function(){
-  if(state.running){
-    state.running=false;
-    if(animId) cancelAnimationFrame(animId);
-    animId=null; lastTime=null;
-    this.textContent='▶ Συνέχεια'; this.classList.add('active');
-  } else {
-    if(state.t===0){const p=getParams();state.v=p.v0;}
-    state.running=true;
-    this.textContent='⏸ Παύση'; this.classList.remove('active');
-    lastTime=null; animId=requestAnimationFrame(simStep);
-  }
-});
-
-document.getElementById('btn-reset').addEventListener('click', resetSim);
-
-document.getElementById('btn-log').addEventListener('click',function(){
-  state.logMode=!state.logMode;
-  this.textContent       = state.logMode?'🔴 Ακύρωση καταγραφής':'📋 Καταγραφή κλικ';
-  this.style.background  = state.logMode?'var(--danger-bg)':'';
-  this.style.color       = state.logMode?'var(--danger-text)':'';
-  this.style.borderColor = state.logMode?'var(--danger-text)':'';
-});
-
-/* Clear log — only clears the table, does NOT reset simulation */
-document.getElementById('btn-clear-log').addEventListener('click', clearLog);
-
-canvas.addEventListener('click',function(){
-  if(!state.logMode) return;
+function addLogPoint(){
   logData.push({n:logData.length+1,t:state.t,x:state.x,v:state.v});
-  const tbody=document.getElementById('log-body');
   const row=document.createElement('tr');
   const last=logData[logData.length-1];
   row.innerHTML=`<td>${last.n}</td><td>${last.t.toFixed(3)}</td><td>${last.x.toFixed(3)}</td><td class="col-v-h${showVLog?'':' hidden'}">${last.v.toFixed(3)}</td>`;
-  tbody.appendChild(row);
+  document.getElementById('log-body').appendChild(row);
   document.getElementById('log-count').textContent=logData.length+' σημεία';
   document.querySelector('.log-wrap').scrollTop=9999;
+}
+
+/* Fullscreen */
+document.getElementById('btn-fullscreen').addEventListener('click',function(){
+  const el=document.getElementById('stage-wrap');
+  if(!isFS()) (el.requestFullscreen||el.webkitRequestFullscreen).call(el);
+  else        (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+});
+function onFSChange(){
+  document.getElementById('btn-fullscreen').textContent=isFS()?'✕ Έξοδος':'⛶ Πλήρης οθόνη';
+  setTimeout(()=>{ resize(); draw(); },60);
+}
+document.addEventListener('fullscreenchange',onFSChange);
+document.addEventListener('webkitfullscreenchange',onFSChange);
+
+/* Speed buttons */
+document.querySelectorAll('.speed-btn').forEach(btn=>{
+  btn.addEventListener('click',function(){
+    simSpeed=parseFloat(this.dataset.speed);
+    document.querySelectorAll('.speed-btn').forEach(b=>b.classList.remove('sel'));
+    this.classList.add('sel');
+    if(!state.running) draw();
+  });
 });
 
+/* Main buttons */
+document.getElementById('btn-start').addEventListener('click',toggleRun);
+document.getElementById('btn-reset').addEventListener('click',resetSim);
+document.getElementById('btn-tog-v').addEventListener('click',()=>{showVel=!showVel;applyVelVis();});
+document.getElementById('tog-v-log').addEventListener('click',()=>{showVLog=!showVLog;applyVLogVis();});
+document.getElementById('btn-log').addEventListener('click',toggleLog);
+document.getElementById('btn-clear-log').addEventListener('click',clearLog);
+
+/* Sliders */
 ['v0','angle','mu','mass'].forEach(id=>{
   const el=document.getElementById(id);
   const out=document.getElementById(id+'-val');

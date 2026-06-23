@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2ος Νόμος του Νεύτωνα — Προσομοίωση</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #ffffff;
+      --bg2:       #f5f4f0;
+      --bg3:       #eeedea;
+      --text:      #1a1a18;
+      --text2:     #5f5e5a;
+      --text3:     #888780;
+      --border:    rgba(0,0,0,.12);
+      --border2:   rgba(0,0,0,.22);
+      --blue:      #378ADD;
+      --blue-dark: #185FA5;
+      --blue-bg:   #E6F1FB;
+      --blue-text: #0C447C;
+      --amber:     #EF9F27;
+      --amber-bg:  #FAEEDA;
+      --amber-text:#633806;
+      --green-bg:  #EAF3DE;
+      --green-text:#27500A;
+      --radius:    10px;
+      --radius-sm: 6px;
+      --shadow:    0 1px 4px rgba(0,0,0,.08), 0 0 0 .5px rgba(0,0,0,.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:        #1e1e1c;
+        --bg2:       #272724;
+        --bg3:       #2e2e2b;
+        --text:      #e8e6de;
+        --text2:     #9c9a92;
+        --text3:     #636158;
+        --border:    rgba(255,255,255,.10);
+        --border2:   rgba(255,255,255,.18);
+        --blue:      #85B7EB;
+        --blue-dark: #B5D4F4;
+        --blue-bg:   #0C447C;
+        --blue-text: #B5D4F4;
+        --amber:     #FAC775;
+        --amber-bg:  #633806;
+        --amber-text:#FAC775;
+        --green-bg:  #27500A;
+        --green-text:#C0DD97;
+        --shadow:    0 1px 4px rgba(0,0,0,.3), 0 0 0 .5px rgba(255,255,255,.04);
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    .header { margin-bottom: 1.5rem; }
+    .header-label {
+      font-size: 12px;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: .3rem;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: .75rem;
+    }
+    .formula-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .formula-pill {
+      background: var(--bg2);
+      border: .5px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: .35rem .85rem;
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .formula-pill .hi { color: var(--blue); }
+    .formula-note { font-size: 12px; color: var(--text2); }
+
+    /* ── Simulation Canvas ── */
+    #sim-canvas {
+      width: 100%;
+      display: block;
+      border: .5px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      background: transparent;
+    }
+
+    /* ── Controls ── */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 500px) { .controls-grid { grid-template-columns: 1fr; } }
+
+    .ctrl-card {
+      background: var(--bg2);
+      border: .5px solid var(--border);
+      border-radius: var(--radius);
+      padding: .8rem 1rem;
+    }
+    .ctrl-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: .4rem;
+    }
+    .ctrl-name { font-size: 13px; color: var(--text2); }
+    .ctrl-val  { font-size: 17px; font-weight: 600; color: var(--text); }
+    .ctrl-val span { font-size: 12px; font-weight: 400; color: var(--text2); }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border2);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--blue);
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 0 1px var(--blue-dark);
+      cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--blue);
+      border: 2px solid var(--bg);
+      cursor: pointer;
+    }
+    .range-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 4px;
+    }
+
+    /* ── Metric Cards ── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 400px) { .metrics-grid { grid-template-columns: 1fr; } }
+
+    .metric-card {
+      background: var(--bg2);
+      border: .5px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+      text-align: center;
+    }
+    .metric-card.highlight {
+      border-color: var(--blue);
+      border-width: 1.5px;
+    }
+    .metric-label { font-size: 11px; color: var(--text2); margin-bottom: .25rem; }
+    .metric-value { font-size: 22px; font-weight: 600; color: var(--text); line-height: 1; }
+    .metric-value.blue { color: var(--blue); }
+    .metric-unit  { font-size: 11px; color: var(--text3); margin-top: .2rem; }
+
+    /* ── Buttons ── */
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    button {
+      padding: .45rem 1rem;
+      font-size: 13px;
+      border: .5px solid var(--border2);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: background .12s, transform .08s;
+      font-family: inherit;
+    }
+    button:hover  { background: var(--bg3); }
+    button:active { transform: scale(.97); }
+    button.primary {
+      background: var(--blue-bg);
+      color: var(--blue-text);
+      border-color: var(--blue);
+    }
+    button.danger {
+      color: #A32D2D;
+      border-color: rgba(163,45,45,.3);
+    }
+    button.danger:hover { background: #FCEBEB; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      border-bottom: .5px solid var(--border);
+      margin-bottom: .85rem;
+    }
+    .tab {
+      padding: .5rem 1.1rem;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text2);
+      border-bottom: 2px solid transparent;
+      transition: color .12s, border-color .12s;
+      user-select: none;
+    }
+    .tab.active { color: var(--text); border-bottom-color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Chart ── */
+    .chart-wrap { position: relative; width: 100%; height: 280px; }
+    .chart-note {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 6px;
+    }
+
+    /* ── Table ── */
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: .4rem .85rem;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text2);
+      border-bottom: .5px solid var(--border);
+    }
+    td {
+      padding: .45rem .85rem;
+      border-bottom: .5px solid var(--border);
+      color: var(--text);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg2); }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .badge-F { background: var(--blue-bg); color: var(--blue-text); }
+    .badge-a { background: var(--green-bg); color: var(--green-text); }
+
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--text2);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-label">Προσομοίωση Δυνάμεων</div>
+    <h1>2ος Νόμος του Νεύτωνα</h1>
+    <div class="formula-bar">
+      <div class="formula-pill"><span class="hi">F</span> = m × <span class="hi">a</span></div>
+      <div class="formula-pill"><span class="hi">a</span> = F / m</div>
+      <div class="formula-note">Η επιτάχυνση είναι ανάλογη της δύναμης και αντιστρόφως ανάλογη της μάζας</div>
+    </div>
+  </div>
+
+  <!-- Simulation Canvas -->
+  <canvas id="sim-canvas" height="140"></canvas>
+
+  <!-- Controls -->
+  <div class="controls-grid">
+    <div class="ctrl-card">
+      <div class="ctrl-top">
+        <span class="ctrl-name">Μάζα (m)</span>
+        <span class="ctrl-val"><span id="mass-out">5</span> <span>kg</span></span>
+      </div>
+      <input type="range" id="mass-slider" min="1" max="20" value="5" step="1">
+      <div class="range-labels"><span>1 kg</span><span>20 kg</span></div>
+    </div>
+    <div class="ctrl-card">
+      <div class="ctrl-top">
+        <span class="ctrl-name">Δύναμη (F)</span>
+        <span class="ctrl-val"><span id="force-out">20</span> <span>N</span></span>
+      </div>
+      <input type="range" id="force-slider" min="0" max="100" value="20" step="1">
+      <div class="range-labels"><span>0 N</span><span>100 N</span></div>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-label">Δύναμη F</div>
+      <div class="metric-value" id="m-F">20</div>
+      <div class="metric-unit">N (Newton)</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Μάζα m</div>
+      <div class="metric-value" id="m-m">5</div>
+      <div class="metric-unit">kg (χιλιόγραμμα)</div>
+    </div>
+    <div class="metric-card highlight">
+      <div class="metric-label">Επιτάχυνση a = F / m</div>
+      <div class="metric-value blue" id="m-a">4.00</div>
+      <div class="metric-unit">m/s²</div>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="btn-row">
+    <button class="primary" onclick="recordPoint()">⊕ Καταγραφή τιμής</button>
+    <button class="danger"  onclick="clearTable()">Εκκαθάριση</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('chart')">📈 Διάγραμμα F–a</div>
+    <div class="tab"        onclick="switchTab('table')">📋 Πίνακας Τιμών</div>
+  </div>
+
+  <div class="tab-panel active" id="tab-chart">
+    <div class="chart-wrap">
+      <canvas id="chart-canvas" role="img" aria-label="Διάγραμμα δύναμης F και επιτάχυνσης a"></canvas>
+    </div>
+    <p class="chart-note">Κάθε σημείο = μια καταγεγραμμένη μέτρηση &bull; Η κλίση της γραμμής τάσης = 1/m</p>
+  </div>
+
+  <div class="tab-panel" id="tab-table">
+    <div id="table-wrap">
+      <div class="empty-state">
+        Δεν υπάρχουν καταγεγραμμένες τιμές.<br>
+        Ρύθμισε τις παραμέτρους και πάτα «Καταγραφή τιμής».
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  /* ── State ── */
+  let mass  = 5;
+  let force = 20;
+  let cartX = 60;
+  let cartVel = 0;
+  let lastTime = 0;
+  let recordedPoints = [];
+  let chart = null;
+
+  const SIM_W = 760, SIM_H = 140;
+
+  /* ── DOM refs ── */
+  const massSlider  = document.getElementById('mass-slider');
+  const forceSlider = document.getElementById('force-slider');
+  const massOut     = document.getElementById('mass-out');
+  const forceOut    = document.getElementById('force-out');
+  const mF          = document.getElementById('m-F');
+  const mM          = document.getElementById('m-m');
+  const mA          = document.getElementById('m-a');
+  const simCanvas   = document.getElementById('sim-canvas');
+  const ctx         = simCanvas.getContext('2d');
+
+  /* ── Helpers ── */
+  function getAccel() { return force / mass; }
+
+  function updateMetrics() {
+    massOut.textContent  = mass;
+    forceOut.textContent = force;
+    mF.textContent = force;
+    mM.textContent = mass;
+    mA.textContent = getAccel().toFixed(2);
+  }
+
+  massSlider.addEventListener('input',  e => { mass  = +e.target.value; updateMetrics(); });
+  forceSlider.addEventListener('input', e => { force = +e.target.value; updateMetrics(); });
+
+  /* ── Theme colors (live) ── */
+  function colors() {
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    return {
+      ground:   dark ? '#3d3d3a' : '#d3d1c7',
+      surface:  dark ? '#272724' : '#F5F4F0',
+      cart:     dark ? '#185FA5' : '#378ADD',
+      cartEdge: dark ? '#0C447C' : '#185FA5',
+      wheel:    dark ? '#888780' : '#888780',
+      axle:     dark ? '#444441' : '#5f5e5a',
+      arrow:    dark ? '#EF9F27' : '#BA7517',
+      arrowTxt: dark ? '#FAC775' : '#633806',
+      accelTxt: dark ? '#85B7EB' : '#185FA5',
+      label:    dark ? '#c2c0b6' : '#3d3d3a',
+    };
+  }
+
+  /* ── Simulation draw loop ── */
+  function drawSim(ts) {
+    const dt = lastTime ? Math.min((ts - lastTime) / 1000, 0.05) : 0;
+    lastTime = ts;
+
+    simCanvas.width  = SIM_W;
+    simCanvas.height = SIM_H;
+
+    const c = colors();
+
+    /* ground */
+    ctx.fillStyle = c.surface;
+    ctx.fillRect(0, 98, SIM_W, SIM_H - 98);
+    ctx.strokeStyle = c.ground;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(0, 98); ctx.lineTo(SIM_W, 98); ctx.stroke();
+
+    /* tick marks */
+    ctx.setLineDash([]);
+    ctx.strokeStyle = c.ground; ctx.lineWidth = .6;
+    for (let x = 0; x < SIM_W; x += 30) {
+      ctx.beginPath(); ctx.moveTo(x, 95); ctx.lineTo(x, 100); ctx.stroke();
+    }
+
+    /* physics */
+    if (force > 0) {
+      cartVel += getAccel() * dt * 40;
+      cartX   += cartVel * dt;
+    } else {
+      cartVel = 0;
+    }
+    if (cartX > SIM_W + 50) { cartX = -80; cartVel = 0; }
+
+    const CW = 70, CH = 32;
+    const cx = cartX, cy = 60;
+
+    /* mass label */
+    ctx.fillStyle = c.label;
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('m = ' + mass + ' kg', cx + CW / 2, cy - 9);
+
+    /* cart body */
+    ctx.fillStyle = c.cart;
+    roundRect(ctx, cx, cy, CW, CH, 5); ctx.fill();
+    ctx.strokeStyle = c.cartEdge; ctx.lineWidth = 1; ctx.stroke();
+
+    /* cart label */
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 13px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('m', cx + CW / 2, cy + CH / 2 + 5);
+
+    /* wheels */
+    const wY = cy + CH + 6;
+    [cx + 12, cx + CW - 12].forEach(wx => {
+      ctx.beginPath(); ctx.arc(wx, wY, 8, 0, Math.PI * 2);
+      ctx.fillStyle = c.wheel; ctx.fill();
+      ctx.strokeStyle = c.axle; ctx.lineWidth = 1; ctx.stroke();
+      ctx.beginPath(); ctx.arc(wx, wY, 3, 0, Math.PI * 2);
+      ctx.fillStyle = c.axle; ctx.fill();
+    });
+
+    /* force arrow */
+    if (force > 0) {
+      const aLen = Math.min(15 + force * 1.3, 160);
+      const ax = cx - 10, ay = cy + CH / 2;
+      ctx.strokeStyle = c.arrow; ctx.lineWidth = 2.5; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(ax - aLen, ay); ctx.lineTo(ax, ay); ctx.stroke();
+      ctx.fillStyle = c.arrow;
+      ctx.beginPath(); ctx.moveTo(ax + 1, ay); ctx.lineTo(ax - 11, ay - 7); ctx.lineTo(ax - 11, ay + 7); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = c.arrowTxt;
+      ctx.font = '600 12px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('F = ' + force + ' N', ax - aLen / 2, ay - 10);
+    }
+
+    /* acceleration label */
+    if (force > 0) {
+      ctx.fillStyle = c.accelTxt;
+      ctx.font = '600 11px system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('a = ' + getAccel().toFixed(2) + ' m/s²  →', cx + CW - 4, cy - 9);
+    }
+
+    requestAnimationFrame(drawSim);
+  }
+
+  function roundRect(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+  }
+
+  requestAnimationFrame(drawSim);
+  updateMetrics();
+
+  /* ── Chart.js ── */
+  function initChart() {
+    const dark  = matchMedia('(prefers-color-scheme: dark)').matches;
+    const gridC = dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.07)';
+    const tickC = dark ? '#888780' : '#73726c';
+    chart = new Chart(document.getElementById('chart-canvas'), {
+      type: 'scatter',
+      data: {
+        datasets: [
+          {
+            label: 'Μετρήσεις',
+            data: [],
+            backgroundColor: '#378ADD',
+            borderColor: '#185FA5',
+            pointRadius: 6,
+            pointHoverRadius: 9,
+            showLine: false,
+          },
+          {
+            label: 'Γραμμή τάσης',
+            data: [],
+            borderColor: '#EF9F27',
+            borderWidth: 1.5,
+            borderDash: [4, 3],
+            pointRadius: 0,
+            showLine: true,
+            fill: false,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `F = ${ctx.parsed.x} N,  a = ${ctx.parsed.y.toFixed(2)} m/s²`
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'Δύναμη F (N)', font: { size: 12 }, color: tickC },
+            grid:  { color: gridC },
+            ticks: { color: tickC }
+          },
+          y: {
+            title: { display: true, text: 'Επιτάχυνση a (m/s²)', font: { size: 12 }, color: tickC },
+            grid:  { color: gridC },
+            ticks: { color: tickC }
+          }
+        }
+      }
+    });
+  }
+  initChart();
+
+  /* ── Trend line ── */
+  function updateTrendLine() {
+    if (recordedPoints.length < 2) { chart.data.datasets[1].data = []; chart.update(); return; }
+    const xs = recordedPoints.map(p => p.x);
+    const ys = recordedPoints.map(p => p.y);
+    const n = xs.length;
+    const sumX  = xs.reduce((a, b) => a + b, 0);
+    const sumY  = ys.reduce((a, b) => a + b, 0);
+    const sumXY = xs.reduce((s, x, i) => s + x * ys[i], 0);
+    const sumX2 = xs.reduce((s, x) => s + x * x, 0);
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX) || 0;
+    const inter = (sumY - slope * sumX) / n;
+    const minX  = Math.max(0, Math.min(...xs) - 5);
+    const maxX  = Math.max(...xs) + 5;
+    chart.data.datasets[1].data = [
+      { x: minX, y: slope * minX + inter },
+      { x: maxX, y: slope * maxX + inter }
+    ];
+    chart.update();
+  }
+
+  /* ── Record / Clear ── */
+  function recordPoint() {
+    const a  = +getAccel().toFixed(2);
+    const id = recordedPoints.length + 1;
+    recordedPoints.push({ id, x: force, y: a, m: mass });
+    chart.data.datasets[0].data.push({ x: force, y: a });
+    updateTrendLine();
+    renderTable();
+  }
+
+  function clearTable() {
+    if (!confirm('Να διαγραφούν όλες οι καταγεγραμμένες τιμές;')) return;
+    recordedPoints = [];
+    chart.data.datasets[0].data = [];
+    updateTrendLine();
+    renderTable();
+  }
+
+  /* ── Table rendering ── */
+  function renderTable() {
+    const wrap = document.getElementById('table-wrap');
+    if (!recordedPoints.length) {
+      wrap.innerHTML = '<div class="empty-state">Δεν υπάρχουν καταγεγραμμένες τιμές.<br>Ρύθμισε τις παραμέτρους και πάτα «Καταγραφή τιμής».</div>';
+      return;
+    }
+    let html = '<div class="table-scroll"><table><thead><tr>' +
+      '<th>#</th><th>Μάζα m (kg)</th><th>Δύναμη F (N)</th><th>Επιτάχυνση a (m/s²)</th><th>Έλεγχος F/m</th>' +
+      '</tr></thead><tbody>';
+    recordedPoints.forEach(p => {
+      const check = (p.x / p.m).toFixed(2);
+      html += `<tr>
+        <td>${p.id}</td>
+        <td>${p.m}</td>
+        <td><span class="badge badge-F">${p.x}</span></td>
+        <td><span class="badge badge-a">${p.y}</span></td>
+        <td style="color: var(--text2)">${check}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+  }
+
+  /* ── Tab switching ── */
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', ['chart', 'table'][i] === name);
+    });
+    document.getElementById('tab-chart').classList.toggle('active', name === 'chart');
+    document.getElementById('tab-table').classList.toggle('active', name === 'table');
+  }
+</script>
+</body>
+</html>

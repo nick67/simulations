@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Κλεψύδρα Νερού — Torricelli</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+    background: #fff;
+    border-radius: 12px;
+    padding: 2rem 2rem 1.5rem;
+    border: 1px solid #ddd;
+    max-width: 620px;
+    width: 100%;
+  }
+  h1 { font-size: 18px; font-weight: 500; color: #222; }
+  .subtitle { font-size: 13px; color: #888; margin-top: -0.5rem; }
+  canvas {
+    display: block;
+    border: 0;
+    background: #fff;
+    max-width: 100%;
+  }
+  #controls {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .lbl { font-size: 13px; color: #444; }
+  #flowVal { font-size: 13px; font-weight: 500; color: #185FA5; min-width: 24px; }
+  button {
+    background: #fff;
+    border: 1px solid #999;
+    border-radius: 6px;
+    padding: 7px 18px;
+    font-size: 13px;
+    color: #222;
+    cursor: pointer;
+  }
+  button:hover { background: #f0f0f0; }
+  #timerDisp { font-size: 13px; color: #444; min-width: 55px; text-align: center; }
+  #speedDisp { font-size: 12px; color: #888; min-width: 120px; }
+  #note {
+    font-size: 11px;
+    color: #aaa;
+    text-align: center;
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>Κλεψύδρα Νερού</h1>
+  <p class="subtitle">Νόμος Torricelli: v = &#8730;(2gh) — ανοιχτή δεξαμενή</p>
+  <canvas id="cv" width="520" height="430"></canvas>
+  <div id="controls">
+    <span class="lbl">Βαλβίδα:</span>
+    <input type="range" id="flowSlider" min="1" max="10" step="1" value="5" style="width:120px">
+    <span id="flowVal">5</span>
+    <button id="btnPlay">&#9654; Εκκίνηση</button>
+    <button id="btnReset">&#8635; Επαναφορά</button>
+    <span id="timerDisp">60s</span>
+    <span id="speedDisp">Ροή: —</span>
+  </div>
+  <p id="note">
+    Βαλβίδα 5 = άδειασμα σε 1 λεπτό &nbsp;|&nbsp; 10 = ~30s &nbsp;|&nbsp; 1 = ~5 λεπτά<br>
+    Η ροή επιβραδύνεται καθώς πέφτει η στάθμη (υδροστατική πίεση)
+  </p>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+const TANK_X=80, TANK_Y=50, TANK_W=160, TANK_H=180;
+const LOWER_X=80, LOWER_Y=270, LOWER_W=160, LOWER_H=130;
+const PIPE_X=155, PIPE_Y1=TANK_Y+TANK_H, PIPE_Y2=LOWER_Y;
+const PIPE_W=10;
+const VALVE_CX=PIPE_X+PIPE_W/2, VALVE_Y=PIPE_Y1+(PIPE_Y2-PIPE_Y1)/2;
+
+const MAX_VOL = TANK_W * TANK_H;
+const g = 9.81;
+const TANK_REAL_H = 0.5;
+const MID_VALVE = 5;
+const TARGET_DURATION = 60;
+
+const A_mid = (1.0 * Math.sqrt(2 * TANK_REAL_H / g)) / TARGET_DURATION;
+const ORIFICE_BASE = A_mid / (MID_VALVE / 5);
+
+const WATER = '#85B7EB', WATER_DARK = '#185FA5', STROKE = '#333';
+
+let upperVol = MAX_VOL;
+let lowerVol = 0;
+let running = false;
+let raf = null;
+let lastT = null;
+let elapsed = 0;
+let maxFlowAtStart = 0;
+
+const flowSlider = document.getElementById('flowSlider');
+const flowValEl = document.getElementById('flowVal');
+const btnPlay = document.getElementById('btnPlay');
+const btnReset = document.getElementById('btnReset');
+const timerDisp = document.getElementById('timerDisp');
+const speedDisp = document.getElementById('speedDisp');
+
+flowSlider.addEventListener('input', () => { flowValEl.textContent = flowSlider.value; });
+
+function getOrificeArea() {
+  return ORIFICE_BASE * (parseInt(flowSlider.value) / 5);
+}
+
+function torricelliFlow(vol) {
+  const h = (vol / MAX_VOL) * TANK_REAL_H;
+  if (h <= 0) return 0;
+  return getOrificeArea() * Math.sqrt(2 * g * h);
+}
+
+function estimateRemaining() {
+  const A = getOrificeArea();
+  const h = (upperVol / MAX_VOL) * TANK_REAL_H;
+  if (h <= 0) return 0;
+  return (2 * 1.0 * Math.sqrt(h)) / (A * Math.sqrt(2 * g));
+}
+
+function drawOpenTank() {
+  ctx.save();
+  ctx.strokeStyle = STROKE;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(TANK_X, TANK_Y);
+  ctx.lineTo(TANK_X, TANK_Y + TANK_H);
+  ctx.lineTo(TANK_X + TANK_W, TANK_Y + TANK_H);
+  ctx.lineTo(TANK_X + TANK_W, TANK_Y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawLowerTank() {
+  ctx.save();
+  ctx.strokeStyle = STROKE;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(LOWER_X, LOWER_Y, LOWER_W, LOWER_H);
+  ctx.restore();
+}
+
+function drawValve(open) {
+  const vx = VALVE_CX, vy = VALVE_Y;
+  ctx.save();
+  ctx.strokeStyle = STROKE; ctx.lineWidth = 1.5;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(vx, vy, 11, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.beginPath();
+  if (open) { ctx.moveTo(vx, vy-7); ctx.lineTo(vx, vy+7); }
+  else       { ctx.moveTo(vx-7, vy); ctx.lineTo(vx+7, vy); }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawDroplets(flowRate) {
+  if (!running || upperVol <= 0 || flowRate <= 0) return;
+  const ratio = maxFlowAtStart > 0 ? flowRate / maxFlowAtStart : 1;
+  const count = Math.max(1, Math.round(ratio * 5));
+  const t = Date.now() / 300;
+  ctx.save();
+  ctx.fillStyle = WATER_DARK;
+  for (let i = 0; i < count; i++) {
+    const phase = (t + i * 0.45) % 1;
+    const dy = PIPE_Y1 + phase * (PIPE_Y2 - PIPE_Y1);
+    const jitter = Math.sin(t*3 + i*2.1) * 2;
+    ctx.beginPath();
+    ctx.arc(PIPE_X + PIPE_W/2 + jitter, dy, 2.5, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function draw(flowRate) {
+  ctx.clearRect(0, 0, W, H);
+
+  const upperFrac = Math.max(0, upperVol / MAX_VOL);
+  const lowerFrac = Math.min(1, lowerVol / MAX_VOL);
+
+  ctx.save();
+  const uh = upperFrac * TANK_H;
+  ctx.fillStyle = WATER;
+  ctx.fillRect(TANK_X + 1, TANK_Y + TANK_H - uh, TANK_W - 2, uh);
+
+  const lh = lowerFrac * LOWER_H;
+  ctx.fillStyle = WATER;
+  ctx.fillRect(LOWER_X + 1, LOWER_Y + LOWER_H - lh, LOWER_W - 2, lh);
+
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(PIPE_X, PIPE_Y1, PIPE_W, PIPE_Y2 - PIPE_Y1);
+  ctx.strokeStyle = STROKE; ctx.lineWidth = 1.5;
+  ctx.strokeRect(PIPE_X, PIPE_Y1, PIPE_W, PIPE_Y2 - PIPE_Y1);
+  ctx.restore();
+
+  drawOpenTank();
+  drawLowerTank();
+  drawDroplets(flowRate);
+  drawValve(running);
+
+  ctx.save();
+  ctx.font = '12px Arial, sans-serif';
+  ctx.fillStyle = '#333'; ctx.textAlign = 'left';
+  ctx.fillText('Δεξαμενή Α', TANK_X + TANK_W + 10, TANK_Y + TANK_H/2);
+  ctx.fillText('Δεξαμενή Β', LOWER_X + LOWER_W + 10, LOWER_Y + LOWER_H/2);
+  ctx.fillText('Βαλβίδα', VALVE_CX + 16, VALVE_Y + 4);
+
+  const pct = Math.round(upperFrac * 100);
+  const uh2 = upperFrac * TANK_H;
+  const textY = Math.max(TANK_Y + 16, TANK_Y + TANK_H - uh2 + 16);
+  ctx.fillStyle = pct > 30 ? '#0C447C' : '#A32D2D';
+  if (uh2 > 10) ctx.fillText(pct + '%', TANK_X + 6, textY);
+
+  const pct2 = Math.round(lowerFrac * 100);
+  ctx.fillStyle = '#0C447C';
+  if (lowerFrac > 0.05) ctx.fillText(pct2 + '%', LOWER_X + 6, LOWER_Y + LOWER_H - 6);
+
+  const h_cm = (upperFrac * TANK_REAL_H * 100).toFixed(1);
+  ctx.fillStyle = '#888';
+  ctx.fillText('h = ' + h_cm + ' cm', TANK_X + TANK_W + 10, TANK_Y + TANK_H/2 + 18);
+  ctx.restore();
+}
+
+function loop(ts) {
+  if (!lastT) lastT = ts;
+  const dt = Math.min((ts - lastT) / 1000, 0.05);
+  lastT = ts;
+  elapsed += dt;
+
+  const flowRate = torricelliFlow(upperVol);
+  const pixRate = flowRate * (MAX_VOL / TANK_REAL_H);
+  const transfer = Math.min(pixRate * dt, upperVol);
+
+  upperVol = Math.max(0, upperVol - transfer);
+  lowerVol = Math.min(MAX_VOL, lowerVol + transfer);
+
+  const rem = estimateRemaining();
+  timerDisp.textContent = Math.ceil(rem) + 's';
+
+  const pctFlow = maxFlowAtStart > 0 ? Math.round((flowRate / maxFlowAtStart) * 100) : 0;
+  speedDisp.textContent = 'Ροή: ' + pctFlow + '%';
+
+  if (upperVol <= 0) {
+    upperVol = 0;
+    running = false;
+    btnPlay.textContent = '\u25B6 Εκκίνηση';
+    timerDisp.textContent = '0s';
+  }
+
+  draw(flowRate);
+  if (running) raf = requestAnimationFrame(loop);
+}
+
+btnPlay.addEventListener('click', () => {
+  if (running) {
+    cancelAnimationFrame(raf); running = false; lastT = null;
+    btnPlay.textContent = '\u25B6 Εκκίνηση';
+  } else {
+    maxFlowAtStart = torricelliFlow(upperVol);
+    running = true; lastT = null;
+    btnPlay.textContent = '\u23F8 Παύση';
+    raf = requestAnimationFrame(loop);
+  }
+});
+
+btnReset.addEventListener('click', () => {
+  cancelAnimationFrame(raf); running = false; lastT = null;
+  elapsed = 0; upperVol = MAX_VOL; lowerVol = 0;
+  timerDisp.textContent = '60s';
+  speedDisp.textContent = 'Ροή: —';
+  btnPlay.textContent = '\u25B6 Εκκίνηση';
+  draw(0);
+});
+
+draw(0);
+</script>
+</body>
+</html>

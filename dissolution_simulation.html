@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Διάλυση Αερίου σε Νερό — Νόμος Henry</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #f5f5f2;
+    color: #1a1a1a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+
+  h1 {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #1a1a1a;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 1.5rem;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e0e0da;
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    width: 100%;
+    max-width: 700px;
+    margin-bottom: 1rem;
+  }
+
+  .gas-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.25rem;
+  }
+  .gas-btn {
+    flex: 1;
+    padding: 5px 0;
+    border: 1px solid #d0d0cc;
+    border-radius: 6px;
+    background: #f0f0ed;
+    font-size: 12px;
+    color: #777;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 400;
+  }
+  .gas-btn.active {
+    background: #e2e2de;
+    color: #333;
+    border-color: #b0b0aa;
+    font-weight: 500;
+  }
+
+  .sliders {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+  .sl-card {
+    background: #f7f7f5;
+    border: 1px solid #e4e4e0;
+    border-radius: 6px;
+    padding: 7px 12px;
+  }
+  .sl-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .sl-name { font-size: 11px; color: #888; }
+  .sl-val { font-size: 14px; font-weight: 500; color: #444; }
+  .sl-unit { font-size: 10px; color: #aaa; margin-left: 2px; }
+
+  input[type=range] {
+    width: 100%;
+    accent-color: #888;
+    cursor: pointer;
+    height: 2px;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid #e0e0da;
+    background: #fff;
+  }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: #666;
+    margin-top: 10px;
+    justify-content: center;
+  }
+  .ld { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+
+  .solubility-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    background: #f5f5f2;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 10px;
+  }
+  .sol-label { font-size: 13px; color: #666; }
+  .sol-value { font-size: 22px; font-weight: 500; }
+  .sol-unit { font-size: 12px; color: #999; margin-left: 4px; }
+
+  .henry-box {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.8;
+  }
+  .henry-box strong { color: #1a1a1a; }
+  .henry-formula {
+    font-size: 17px;
+    font-weight: 500;
+    color: #92400e;
+    letter-spacing: 0.03em;
+    margin: 4px 0;
+  }
+  .henry-calc { font-size: 12px; color: #666; margin-top: 4px; }
+  .henry-calc span { color: #1a1a1a; font-weight: 500; }
+
+  footer {
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 1rem;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>Διάλυση αερίου σε νερό</h1>
+<p class="subtitle">Προσομοίωση με βάση τον Νόμο Henry — για μαθητές Λυκείου</p>
+
+<div class="card">
+  <div class="gas-selector">
+    <button class="gas-btn active" id="btn-CO2" onclick="setGas('CO2')">CO₂ — Διοξείδιο του άνθρακα</button>
+    <button class="gas-btn" id="btn-O2" onclick="setGas('O2')">O₂ — Οξυγόνο</button>
+  </div>
+
+  <div class="sliders">
+    <div class="sl-card">
+      <div class="sl-top">
+        <span class="sl-name">Θερμοκρασία</span>
+        <span><span class="sl-val" id="tv">25</span><span class="sl-unit">°C</span></span>
+      </div>
+      <input type="range" min="0" max="80" value="25" step="1" id="tsl" oninput="update()">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:2px"><span>0°C</span><span>80°C</span></div>
+    </div>
+    <div class="sl-card">
+      <div class="sl-top">
+        <span class="sl-name">Μερική πίεση</span>
+        <span><span class="sl-val" id="pv">1.0</span><span class="sl-unit">atm</span></span>
+      </div>
+      <input type="range" min="1" max="50" value="10" step="1" id="psl" oninput="update()">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:2px"><span>0.1 atm</span><span>5 atm</span></div>
+    </div>
+  </div>
+
+  <canvas id="tank" width="660" height="440"></canvas>
+
+  <div class="legend">
+    <span class="ld"><span class="dot" style="background:#444441"></span>C (Άνθρακας)</span>
+    <span class="ld"><span class="dot" style="background:#E24B4A"></span>O (Οξυγόνο)</span>
+    <span class="ld"><span class="dot" style="background:#85B7EB"></span>H₂O (Νερό)</span>
+  </div>
+
+  <div class="solubility-row">
+    <span class="sol-label">Διαλυτότητα (νόμος Henry)</span>
+    <span><span class="sol-value" id="sol">—</span><span class="sol-unit">mmol/L</span></span>
+  </div>
+
+  <div class="henry-box">
+    <strong>Νόμος Henry:</strong>
+    <div class="henry-formula">C = K<sub>H</sub> · P</div>
+    <div>Η διαλυτότητα ενός αερίου είναι <strong>ανάλογη της μερικής πίεσής</strong> του πάνω από το διάλυμα.
+    Αύξηση θερμοκρασίας → μείωση K<sub>H</sub> → μείωση διαλυτότητας.</div>
+    <div class="henry-calc" id="heq">—</div>
+  </div>
+</div>
+
+<footer>Προσομοίωση χημείας · Λύκειο · Νόμος Henry</footer>
+
+<script>
+const W=660, H=440, SURFACE=150;
+const TOTAL_MOLS=24;
+const C_COLOR='#444441', O_COLOR='#E24B4A', H2O_COLOR='#85B7EB', BOND='#888780';
+const GAS_PROPS={
+  CO2:{KH:3.4e-4, dH:2400},
+  O2:{KH:1.3e-5, dH:1500}
+};
+
+let gas='CO2', mols=[], waterMols=[];
+
+function rnd(a,b){return a+Math.random()*(b-a);}
+
+function makeMol(x,y,dissolved){
+  return {x,y, vx:(Math.random()-.5)*(dissolved?0.7:1.2), vy:(Math.random()-.5)*(dissolved?0.7:1.2), dissolved, transitioning:false, ty:0};
+}
+function makeH2O(x,y){return {x,y, vx:(Math.random()-.5)*0.4, vy:(Math.random()-.5)*0.4};}
+
+function initMols(){
+  mols=[]; waterMols=[];
+  for(let i=0;i<TOTAL_MOLS;i++) mols.push(makeMol(rnd(20,W-20), rnd(10,SURFACE-10), false));
+  for(let i=0;i<45;i++) waterMols.push(makeH2O(rnd(16,W-16), rnd(SURFACE+12,H-12)));
+}
+
+function calcSol(g,T,P){
+  const Tk=T+273.15, Tr=298.15;
+  const KH=GAS_PROPS[g].KH*Math.exp(GAS_PROPS[g].dH*(1/Tk-1/Tr));
+  return KH*P*1000;
+}
+
+function getT(){return parseInt(document.getElementById('tsl').value);}
+function getP(){return parseInt(document.getElementById('psl').value)/10;}
+
+function update(){
+  const T=getT(), P=getP();
+  document.getElementById('tv').textContent=T;
+  document.getElementById('pv').textContent=P.toFixed(1);
+
+  const sol=calcSol(gas,T,P);
+  document.getElementById('sol').textContent=sol.toFixed(4);
+
+  const KH=GAS_PROPS[gas].KH*Math.exp(GAS_PROPS[gas].dH*(1/(T+273.15)-1/298.15));
+  document.getElementById('heq').textContent=
+    'C = '+KH.toExponential(2)+' mol/(L·atm) × '+P.toFixed(1)+' atm = '+sol.toFixed(4)+' mmol/L';
+
+  const ref=calcSol(gas,25,1.0);
+  const ratio=Math.min(1, sol/(ref*5));
+  const targetDis=Math.round(ratio*TOTAL_MOLS);
+  const curDis=mols.filter(m=>m.dissolved).length;
+
+  if(targetDis>curDis){
+    let n=targetDis-curDis;
+    for(let i=0;i<mols.length&&n>0;i++){
+      if(!mols[i].dissolved&&!mols[i].transitioning){
+        mols[i].transitioning=true; mols[i].dissolved=true;
+        mols[i].ty=rnd(SURFACE+14,H-14); mols[i].vx=(Math.random()-.5)*0.7; mols[i].vy=0.8; n--;
+      }
+    }
+  } else if(targetDis<curDis){
+    let n=curDis-targetDis;
+    for(let i=0;i<mols.length&&n>0;i++){
+      if(mols[i].dissolved&&!mols[i].transitioning){
+        mols[i].transitioning=true; mols[i].dissolved=false;
+        mols[i].ty=rnd(10,SURFACE-10); mols[i].vx=(Math.random()-.5)*1.2; mols[i].vy=-0.9; n--;
+      }
+    }
+  }
+}
+
+function moveH2O(m){
+  m.x+=m.vx; m.y+=m.vy;
+  if(m.x<12||m.x>W-12) m.vx*=-1;
+  if(m.y<SURFACE+8||m.y>H-8) m.vy*=-1;
+  m.x=Math.max(12,Math.min(W-12,m.x));
+  m.y=Math.max(SURFACE+8,Math.min(H-8,m.y));
+}
+
+function moveMol(m,speed){
+  if(m.transitioning){
+    m.x+=m.vx*speed; m.y+=m.vy*speed;
+    if(m.dissolved&&m.y>=m.ty){m.y=m.ty; m.vy=(Math.random()-.5)*0.7; m.transitioning=false;}
+    if(!m.dissolved&&m.y<=m.ty){m.y=m.ty; m.vy=(Math.random()-.5)*1.2; m.transitioning=false;}
+    m.x=Math.max(14,Math.min(W-14,m.x));
+  } else if(m.dissolved){
+    m.x+=m.vx*0.6; m.y+=m.vy*0.6;
+    if(m.x<14||m.x>W-14) m.vx*=-1;
+    if(m.y<SURFACE+12||m.y>H-12) m.vy*=-1;
+    m.x=Math.max(14,Math.min(W-14,m.x)); m.y=Math.max(SURFACE+12,Math.min(H-12,m.y));
+  } else {
+    m.x+=m.vx*speed; m.y+=m.vy*speed;
+    if(m.x<14||m.x>W-14) m.vx*=-1;
+    if(m.y<8||m.y>SURFACE-8) m.vy*=-1;
+    m.x=Math.max(14,Math.min(W-14,m.x)); m.y=Math.max(8,Math.min(SURFACE-8,m.y));
+  }
+}
+
+function drawCO2(ctx,x,y){
+  const rc=8, r=6, bond=11;
+  ctx.strokeStyle=BOND; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(x-bond,y); ctx.lineTo(x+bond,y); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x-bond,y,r,0,Math.PI*2); ctx.fillStyle=O_COLOR; ctx.fill();
+  ctx.beginPath(); ctx.arc(x,y,rc,0,Math.PI*2); ctx.fillStyle=C_COLOR; ctx.fill();
+  ctx.beginPath(); ctx.arc(x+bond,y,r,0,Math.PI*2); ctx.fillStyle=O_COLOR; ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font='bold 7px sans-serif'; ctx.fillText('C',x,y);
+  ctx.font='bold 6px sans-serif'; ctx.fillText('O',x-bond,y); ctx.fillText('O',x+bond,y);
+}
+
+function drawO2(ctx,x,y){
+  const r=7, bond=9;
+  ctx.strokeStyle=BOND; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(x-bond,y); ctx.lineTo(x+bond,y); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x-bond,y,r,0,Math.PI*2); ctx.fillStyle=O_COLOR; ctx.fill();
+  ctx.beginPath(); ctx.arc(x+bond,y,r,0,Math.PI*2); ctx.fillStyle=O_COLOR; ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font='bold 6px sans-serif'; ctx.fillText('O',x-bond,y); ctx.fillText('O',x+bond,y);
+}
+
+function drawH2O(ctx,x,y){
+  const rO=8, rH=5, angle=52*(Math.PI/180), dist=12;
+  const hx1=x+Math.cos(Math.PI-angle)*dist, hy1=y+Math.sin(Math.PI-angle)*dist;
+  const hx2=x+Math.cos(-angle)*dist, hy2=y+Math.sin(-angle)*dist;
+  ctx.strokeStyle=BOND; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(hx1,hy1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(hx2,hy2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(hx1,hy1,rH,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+  ctx.beginPath(); ctx.arc(hx2,hy2,rH,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+  ctx.beginPath(); ctx.arc(x,y,rO,0,Math.PI*2); ctx.fillStyle=H2O_COLOR; ctx.fill();
+  ctx.fillStyle='#1e40af'; ctx.font='bold 7px sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('O',x,y);
+  ctx.fillStyle='#666'; ctx.font='bold 5px sans-serif';
+  ctx.fillText('H',hx1,hy1); ctx.fillText('H',hx2,hy2);
+}
+
+function draw(){
+  const cv=document.getElementById('tank');
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  ctx.fillStyle='#eaf3de';
+  ctx.beginPath(); ctx.roundRect(0,0,W,SURFACE,[10,10,0,0]); ctx.fill();
+
+  ctx.fillStyle='#dbeafe';
+  ctx.beginPath(); ctx.roundRect(0,SURFACE,W,H-SURFACE,[0,0,10,10]); ctx.fill();
+
+  ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=1; ctx.setLineDash([6,5]);
+  ctx.beginPath(); ctx.moveTo(0,SURFACE); ctx.lineTo(W,SURFACE); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle='rgba(0,0,0,0.28)'; ctx.font='11px system-ui';
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.fillText('Αέρια φάση', 10, 8);
+  ctx.fillText('Υδατικό διάλυμα', 10, SURFACE+8);
+
+  const speed=1+(getT()/80)*1.5;
+  waterMols.forEach(m=>{moveH2O(m); drawH2O(ctx,m.x,m.y);});
+  mols.forEach(m=>{
+    moveMol(m,speed);
+    if(gas==='CO2') drawCO2(ctx,m.x,m.y); else drawO2(ctx,m.x,m.y);
+  });
+
+  requestAnimationFrame(draw);
+}
+
+function setGas(g){
+  gas=g;
+  document.getElementById('btn-CO2').className='gas-btn'+(g==='CO2'?' active':'');
+  document.getElementById('btn-O2').className='gas-btn'+(g==='O2'?' active':'');
+  initMols(); update();
+}
+
+initMols(); update(); draw();
+</script>
+</body>
+</html>
