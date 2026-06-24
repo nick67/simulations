@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Κλεψύδρα — Βήμα 1</title>
+<style>
+:root{
+  --bg:#0d1117;--panel:#161b22;--border:#30363d;
+  --txt:#e6edf3;--dim:#7d8590;--acc:#58a6ff;
+  --grn:#3fb950;--prc:#ff9500;
+  --f:'Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--txt);font-family:var(--f);
+  display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px;}
+header{text-align:center;border-bottom:1px solid var(--border);padding-bottom:10px;width:100%;max-width:920px;}
+header h1{font-size:1rem;letter-spacing:.12em;color:var(--acc);text-transform:uppercase;}
+header p{font-size:.68rem;color:var(--dim);margin-top:3px;}
+
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:7px 14px;width:100%;max-width:920px;}
+.cg{display:flex;align-items:center;gap:6px;}
+.cl{font-size:.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;}
+.dv{width:1px;height:24px;background:var(--border);}
+
+button{cursor:pointer;font-family:var(--f);}
+button.ib{background:#21262d;border:1px solid var(--border);color:var(--txt);
+  border-radius:5px;width:32px;height:32px;font-size:.95rem;
+  display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s;}
+button.ib:hover{background:#30363d;border-color:var(--acc);}
+button.ib.on{background:#1c3a5e;border-color:var(--acc);color:var(--acc);}
+.spd{font-size:.73rem;color:var(--acc);min-width:30px;text-align:center;}
+
+.panels{display:flex;gap:14px;width:100%;max-width:920px;justify-content:center;}
+.sp{flex:1;max-width:430px;background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:9px;}
+.ph{display:flex;align-items:center;justify-content:space-between;}
+.pt{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);}
+.pb{font-size:.56rem;padding:2px 6px;border-radius:3px;}
+.bi{background:rgba(63,185,80,.15);color:var(--grn);border:1px solid var(--grn);}
+.bp{background:rgba(88,166,255,.12);color:var(--acc);border:1px solid var(--acc);}
+
+canvas{width:100%;border:1px solid var(--border);border-radius:6px;background:#0a0f14;display:block;}
+
+.rr{display:flex;gap:7px;}
+.rd{flex:1;background:#0a0f14;border:1px solid var(--border);border-radius:5px;padding:5px 7px;}
+.rl{font-size:.54rem;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;}
+.rv{font-size:.78rem;color:var(--txt);margin-top:1px;}
+
+button.tb{background:#21262d;border:1px solid var(--border);color:var(--dim);
+  border-radius:4px;padding:3px 9px;font-size:.6rem;letter-spacing:.06em;transition:all .15s;}
+button.tb:hover{border-color:var(--acc);color:var(--txt);}
+button.tb.on{background:#1c3a5e;border-color:var(--acc);color:var(--acc);}
+button.tb.pr.on{background:rgba(255,149,0,.1);border-color:var(--prc);color:var(--prc);}
+
+.ds{width:100%;max-width:920px;background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;padding:11px 15px;}
+.dh{font-size:.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;}
+#dc{width:100%;border:1px solid var(--border);border-radius:5px;background:#0a0f14;display:block;}
+
+.eq-row{display:flex;gap:10px;width:100%;max-width:920px;flex-wrap:wrap;}
+.eq-box{flex:1;min-width:190px;background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:10px 13px;}
+.eq-box h3{font-size:.58rem;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;}
+.eq{font-size:.74rem;color:var(--acc);line-height:1.8;}
+.eq .hi{color:var(--prc);}
+.eq .dm{color:var(--dim);font-size:.62rem;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Κλεψύδρα — Βήμα 1</h1>
+  <p>Ιδανική ροή &nbsp;vs&nbsp; Φυσική ροή (Bernoulli / Torricelli)</p>
+</header>
+
+<div class="bar">
+  <div class="cg">
+    <button class="ib" id="bPlay">▶</button>
+    <button class="ib" id="bReset">↺</button>
+  </div>
+  <div class="dv"></div>
+  <div class="cg">
+    <span class="cl">Ταχ.</span>
+    <button class="ib" id="bSlow">−</button>
+    <span class="spd" id="bSpd">2×</span>
+    <button class="ib" id="bFast">+</button>
+  </div>
+  <div class="dv"></div>
+  <div class="cg">
+    <button class="ib on" id="bDiag" title="Διάγραμμα">📊</button>
+    <button class="ib on" id="bEq" title="Εξισώσεις">∑</button>
+  </div>
+</div>
+
+<div class="panels">
+  <div class="sp">
+    <div class="ph">
+      <span class="pt">Ιδανική</span>
+      <span class="pb bi">v = σταθερά</span>
+    </div>
+    <canvas id="cI" width="380" height="420"></canvas>
+    <div class="rr">
+      <div class="rd"><div class="rl">Στάθμη πάνω</div><div class="rv" id="iH1">—</div></div>
+      <div class="rd"><div class="rl">Στάθμη κάτω</div><div class="rv" id="iH2">—</div></div>
+      <div class="rd"><div class="rl">v λαιμού</div><div class="rv" id="iV">—</div></div>
+    </div>
+  </div>
+  <div class="sp">
+    <div class="ph">
+      <span class="pt">Φυσική</span>
+      <span class="pb bp">Bernoulli / Torricelli</span>
+    </div>
+    <canvas id="cP" width="380" height="420"></canvas>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <button class="tb pr" id="bPrs" onclick="togPrs()">⊙ Πίεση λαιμού</button>
+    </div>
+    <div class="rr">
+      <div class="rd"><div class="rl">Στάθμη πάνω</div><div class="rv" id="pH1">—</div></div>
+      <div class="rd"><div class="rl">Στάθμη κάτω</div><div class="rv" id="pH2">—</div></div>
+      <div class="rd"><div class="rl">v Torricelli</div><div class="rv" id="pV">—</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ds" id="dSec">
+  <div class="dh">Στάθμη άνω δοχείου ως προς χρόνο</div>
+  <canvas id="dc" width="880" height="440"></canvas>
+</div>
+
+<div class="eq-row" id="eqSec" style="display:none">
+  <div class="eq-box">
+    <h3>Ιδανική ροή</h3>
+    <div class="eq">
+      v = σταθερά<br>
+      Q = A<sub>n</sub>·v<br>
+      <span class="dm">→ γραμμική μείωση h</span>
+    </div>
+  </div>
+  <div class="eq-box">
+    <h3>Bernoulli / Torricelli</h3>
+    <div class="eq">
+      v = √(2·g·h)<br>
+      Q = C<sub>d</sub>·A<sub>n</sub>·√(2gh)<br>
+      <span class="hi">P<sub>λαιμός</sub> = ρ·g·h<sub>1</sub></span><br>
+      <span class="dm">→ μη-γραμμική μείωση h</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const DT   = 1/60;
+const H0   = 0.85;   // initial fill fraction of top tank
+const G_N  = 2.2;    // normalised g (tuned for classroom visibility)
+const ANECK = 0.1;   // neck/tank area ratio (neckW = tankW/10)
+const Cd    = 0.62;  // discharge coefficient
+
+// Derived constants
+const V0_TORR = 0.62 * Math.sqrt(2 * G_N * H0);  // initial Torricelli velocity
+const Q_IDEAL = ANECK * V0_TORR;                   // constant ideal flow rate
+
+let iVtop, iVbot, pVtop, pVbot;
+
+function initVols(){
+  iVtop = H0; iVbot = 0;
+  pVtop = H0; pVbot = 0;
+}
+
+function stepI(dt){
+  if(iVtop <= 0) return;
+  const dV   = Q_IDEAL * dt * S.spd;
+  iVtop      = Math.max(0, iVtop - dV);
+  iVbot      = Math.min(1, iVbot + dV);
+  if(iJetY < 0) iJetY = 0;
+  iJetY      = Math.min(1, iJetY + dt * S.spd * 2.5);
+}
+
+function stepP(dt){
+  if(pVtop <= 0) return;
+  const v    = 0.62 * Math.sqrt(2 * G_N * pVtop);
+  const dV   = ANECK * v * dt * S.spd;
+  pVtop      = Math.max(0, pVtop - dV);
+  pVbot      = Math.min(1, pVbot + dV);
+  if(pJetY < 0) pJetY = 0;
+  pJetY      = Math.min(1, pJetY + dt * S.spd * 2.5);
+}
+
+const S={
+  run:false, spd:2, t:0,
+  showDiag:true, showEq:false, showPrs:false
+};
+
+let iJetY=-1,pJetY=-1;
+let hI=[],hP=[],hT=[];
+
+function init(){
+  initVols();
+  iJetY=-1; pJetY=-1;
+  S.t=0; hI=[H0]; hP=[H0]; hT=[0];
+}
+init();
+
+const cI=document.getElementById('cI');
+const cP=document.getElementById('cP');
+const xI=cI.getContext('2d');
+const xP=cP.getContext('2d');
+const cD=document.getElementById('dc');
+const xD=cD.getContext('2d');
+
+const W_BLUE ='rgba(59,158,221,';
+const W_LIGHT='rgba(107,191,238,';
+
+function drawSim(ctx,CW,CH,h1,h2,showPrs,jetFrac){
+
+  ctx.clearRect(0,0,CW,CH);
+
+  // Geometry: two rectangles connected by a narrow neck — no funnel
+  const pX=32, pT=22, pB=10;
+  const tW=CW-2*pX;
+  const nW=Math.max(8, Math.round(tW/10));
+  const nH=36;
+  const rH=(CH-pT-pB-nH)/2;
+
+  const tRT=pT;
+  const tRB=tRT+rH;
+  const nT =tRB;      // neck starts immediately at tank bottom
+  const nB =nT+nH;
+  const bRT=nB;       // bottom tank starts immediately at neck bottom
+  const bRB=bRT+rH;
+
+  const nX =pX+(tW-nW)/2;
+  const nCX=pX+tW/2;
+
+  // h1 = fraction of rectangular section (0..1). Visual: surface moves only in rect.
+  // Neck + gap always show water when h1>0 (they are always full by continuity).
+  const wH1 = rH * Math.min(h1,1);   // water height in top rect (pixels)
+  const wY1 = tRB - wH1;              // y of water surface in top rect
+  const wH2 = rH * Math.min(h2,1);
+  const wY2 = bRB - wH2;
+
+  // ── 1. Upper fluid ──────────────────────────────────────────
+  if(h1>0.002){
+    // Rectangular section: water from surface down to tRB
+    if(wH1>0){
+      ctx.fillStyle=W_BLUE+'0.83)';
+      ctx.fillRect(pX, wY1, tW, wH1);
+      // shimmer on surface
+      const sg=ctx.createLinearGradient(0,wY1,0,wY1+7);
+      sg.addColorStop(0,W_LIGHT+'0.6)'); sg.addColorStop(1,W_BLUE+'0)');
+      ctx.fillStyle=sg; ctx.fillRect(pX,wY1,tW,7);
+    }
+    // Neck: always full when h1>0
+    ctx.fillStyle=W_BLUE+'0.83)';
+    ctx.fillRect(nX, nT, nW, nH);
+  }
+
+  // ── 2. Falling water column: animated front below neckBot ──
+  if(h1>0.002 && jetFrac>=0){
+    const fullDrop = bRB - nB;
+    const jetFrontY = nB + jetFrac * fullDrop;
+    const colBot = Math.min(jetFrontY, bRB - wH2);
+    if(colBot > nB){
+      ctx.fillStyle=W_BLUE+'0.78)';
+      ctx.fillRect(nX, nB, nW, colBot-nB);
+    }
+  }
+
+  // ── 3. Bottom tank fluid ──────────────────────────────────
+  if(wH2>0){
+    ctx.fillStyle=W_BLUE+'0.83)';
+    ctx.fillRect(pX,wY2,tW,wH2);
+    if(wH2>3){
+      const sg2=ctx.createLinearGradient(0,wY2,0,wY2+7);
+      sg2.addColorStop(0,W_LIGHT+'0.55)'); sg2.addColorStop(1,W_BLUE+'0)');
+      ctx.fillStyle=sg2; ctx.fillRect(pX,wY2,tW,7);
+    }
+  }
+
+  // ── 4. Walls ────────────────────────────────────────────────
+  ctx.strokeStyle='#3d4a5a';
+  ctx.lineWidth=1.8;
+  ctx.lineJoin='miter';
+  ctx.beginPath();
+  // Top tank: 4 sides (bottom open at neck position)
+  ctx.moveTo(pX,    tRT); ctx.lineTo(pX+tW, tRT);  // top
+  ctx.moveTo(pX,    tRT); ctx.lineTo(pX,    tRB);  // left
+  ctx.moveTo(pX+tW, tRT); ctx.lineTo(pX+tW, tRB);  // right
+  // Bottom of top tank: two segments with gap for neck
+  ctx.moveTo(pX,    tRB); ctx.lineTo(nX,    tRB);  // left segment
+  ctx.moveTo(nX+nW, tRB); ctx.lineTo(pX+tW, tRB);  // right segment
+  // Neck sides (nT==tRB, nB==bRT so these connect seamlessly)
+  ctx.moveTo(nX,    nT);  ctx.lineTo(nX,    nB);
+  ctx.moveTo(nX+nW, nT);  ctx.lineTo(nX+nW, nB);
+  // Top of bottom tank: two segments with gap for neck
+  ctx.moveTo(pX,    bRT); ctx.lineTo(nX,    bRT);  // left segment
+  ctx.moveTo(nX+nW, bRT); ctx.lineTo(pX+tW, bRT);  // right segment
+  // Bottom tank: left, right, bottom
+  ctx.moveTo(pX,    bRT); ctx.lineTo(pX,    bRB);
+  ctx.moveTo(pX+tW, bRT); ctx.lineTo(pX+tW, bRB);
+  ctx.moveTo(pX,    bRB); ctx.lineTo(pX+tW, bRB);
+  ctx.stroke();
+
+  // ── 5. Pressure indicator (physical panel) ──────────────
+  if(showPrs && h1>0.01){
+    const cy=(nT+nB)/2;
+    const al=Math.min(1,h1*1.6);
+    const pval=(h1/H0*100).toFixed(0);
+    const lx=nX+nW+10;  // always to the right of the neck, well inside canvas
+
+    // horizontal line from neck to label
+    ctx.beginPath();
+    ctx.moveTo(nX+nW, cy);
+    ctx.lineTo(lx-3, cy);
+    ctx.strokeStyle=`rgba(230,237,243,0.5)`;
+    ctx.lineWidth=1;
+    ctx.stroke();
+
+    // text: 3 lines, 11px bold
+    ctx.textAlign='left';
+    ctx.font='bold 11px Courier New';
+    ctx.fillStyle='rgba(255,255,255,0.95)';
+    ctx.fillText('P = ρg·h₁', lx, cy-6);
+    ctx.font='11px Courier New';
+    ctx.fillStyle='rgba(255,255,255,0.90)';
+    ctx.fillText(`  = ${pval}% · ρg`, lx, cy+9);
+  }
+
+  // ── 6. h labels ────────────────────────────────────────────
+  ctx.fillStyle='#55667a'; ctx.font='10px Courier New'; ctx.textAlign='left';
+  if(wH1>8) ctx.fillText('h₁',pX+tW+4,wY1+wH1/2+4);
+  if(wH2>8) ctx.fillText('h₂',pX+tW+4,wY2+wH2/2+4);
+}
+
+function drawDiag(){
+  const W=cD.width,H=cD.height;
+  xD.clearRect(0,0,W,H);
+  const px=44,py=12,pw=W-px-16,ph=H-py-24;
+  xD.strokeStyle='#1e2733'; xD.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=py+ph*(1-i/4);
+    xD.beginPath(); xD.moveTo(px,y); xD.lineTo(px+pw,y); xD.stroke();
+    xD.fillStyle='#4a5568'; xD.font='9px Courier New';
+    xD.fillText((i*25)+'%',2,y+4);
+  }
+  xD.strokeStyle='#3d4a5a'; xD.lineWidth=1.5;
+  xD.beginPath(); xD.moveTo(px,py); xD.lineTo(px,py+ph); xD.lineTo(px+pw,py+ph); xD.stroke();
+  xD.fillStyle='#7d8590'; xD.font='9px Courier New';
+  xD.fillText('h₁',1,py+6); xD.fillText('t →',px+pw-16,py+ph+12);
+  if(hT.length<2) return;
+  const tMax=Math.max(hT[hT.length-1],0.01);
+  function pl(h,c){
+    xD.beginPath(); xD.strokeStyle=c; xD.lineWidth=2;
+    for(let i=0;i<h.length;i++){
+      const x=px+(hT[i]/tMax)*pw, y=py+ph*(1-h[i]);
+      i===0?xD.moveTo(x,y):xD.lineTo(x,y);
+    }
+    xD.stroke();
+  }
+  pl(hI,'#3fb950'); pl(hP,'#3b9edd');
+  xD.fillStyle='#3fb950'; xD.fillRect(px+pw-96,py+3,11,3);
+  xD.fillStyle='#7d8590'; xD.font='8px Courier New'; xD.fillText('Ιδανική',px+pw-82,py+7);
+  xD.fillStyle='#3b9edd'; xD.fillRect(px+pw-96,py+13,11,3);
+  xD.fillStyle='#7d8590'; xD.fillText('Φυσική',px+pw-82,py+17);
+}
+
+let smpl=0;
+function loop(){
+  requestAnimationFrame(loop);
+  if(S.run){
+    const dt=DT;
+    S.t+=dt*S.spd; stepI(dt); stepP(dt);
+    smpl+=dt;
+    if(smpl>0.1){
+      smpl=0;
+      hI.push(iVtop); hP.push(pVtop); hT.push(S.t);
+      if(hI.length>500){hI.shift();hP.shift();hT.shift();}
+    }
+  }
+  const CW=cI.width, CH=cI.height;
+  drawSim(xI,CW,CH,iVtop,iVbot,false,iJetY);
+  drawSim(xP,CW,CH,pVtop,pVbot,S.showPrs,pJetY);
+  document.getElementById('iH1').textContent=(iVtop/H0*100).toFixed(1)+'%';
+  document.getElementById('iH2').textContent=(iVbot/H0*100).toFixed(1)+'%';
+  document.getElementById('iV').textContent='σταθ.';
+  const vp=pVtop>0?(Cd*Math.sqrt(2*G_N*pVtop)).toFixed(3):'0.000';
+  document.getElementById('pH1').textContent=(pVtop/H0*100).toFixed(1)+'%';
+  document.getElementById('pH2').textContent=(pVbot/H0*100).toFixed(1)+'%';
+  document.getElementById('pV').textContent='≈'+vp;
+  if(S.showDiag) drawDiag();
+  if(iVtop<=0&&pVtop<=0&&S.run){S.run=false;document.getElementById('bPlay').textContent='▶';}
+}
+requestAnimationFrame(loop);
+
+document.getElementById('bPlay').addEventListener('click',()=>{
+  S.run=!S.run;
+  document.getElementById('bPlay').textContent=S.run?'⏸':'▶';
+});
+document.getElementById('bReset').addEventListener('click',()=>{
+  init(); S.run=false;
+  document.getElementById('bPlay').textContent='▶';
+});
+
+const SPDS=[0.5,1,2,3,5];
+let si=2;
+function updSpd(){S.spd=SPDS[si];document.getElementById('bSpd').textContent=SPDS[si]+'×';}
+document.getElementById('bFast').addEventListener('click',()=>{if(si<SPDS.length-1){si++;updSpd();}});
+document.getElementById('bSlow').addEventListener('click',()=>{if(si>0){si--;updSpd();}});
+
+document.getElementById('bDiag').addEventListener('click',()=>{
+  S.showDiag=!S.showDiag;
+  document.getElementById('dSec').style.display=S.showDiag?'':'none';
+  document.getElementById('bDiag').classList.toggle('on',S.showDiag);
+});
+document.getElementById('bEq').addEventListener('click',()=>{
+  S.showEq=!S.showEq;
+  document.getElementById('eqSec').style.display=S.showEq?'':'none';
+  document.getElementById('bEq').classList.toggle('on',S.showEq);
+});
+
+function togPrs(){
+  S.showPrs=!S.showPrs;
+  document.getElementById('bPrs').classList.toggle('on',S.showPrs);
+}
+</script>
+</body>
+</html>

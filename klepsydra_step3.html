@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Κλεψύδρα — Βήμα 2</title>
+<style>
+:root{
+  --bg:#0d1117;--panel:#161b22;--border:#30363d;
+  --txt:#e6edf3;--dim:#7d8590;--acc:#58a6ff;
+  --grn:#3fb950;--prc:#ff9500;
+  --f:'Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--txt);font-family:var(--f);
+  display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px;}
+header{text-align:center;border-bottom:1px solid var(--border);padding-bottom:10px;width:100%;max-width:960px;}
+header h1{font-size:1rem;letter-spacing:.12em;color:var(--acc);text-transform:uppercase;}
+header p{font-size:.68rem;color:var(--dim);margin-top:3px;}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:7px 14px;width:100%;max-width:960px;}
+.cg{display:flex;align-items:center;gap:6px;}
+.cl{font-size:.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;}
+.dv{width:1px;height:24px;background:var(--border);}
+button{cursor:pointer;font-family:var(--f);}
+button.ib{background:#21262d;border:1px solid var(--border);color:var(--txt);
+  border-radius:5px;width:32px;height:32px;font-size:.95rem;
+  display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s;}
+button.ib:hover{background:#30363d;border-color:var(--acc);}
+button.ib.on{background:#1c3a5e;border-color:var(--acc);color:var(--acc);}
+.spd{font-size:.73rem;color:var(--acc);min-width:30px;text-align:center;}
+.panels{display:flex;gap:14px;width:100%;max-width:960px;justify-content:center;}
+.sp{flex:1;max-width:450px;background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:9px;}
+.ph{display:flex;align-items:center;justify-content:space-between;}
+.pt{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);}
+.pb{font-size:.56rem;padding:2px 6px;border-radius:3px;}
+.bp{background:rgba(88,166,255,.12);color:var(--acc);border:1px solid var(--acc);}
+.bc{background:rgba(255,149,0,.12);color:var(--prc);border:1px solid var(--prc);}
+canvas{width:100%;border:1px solid var(--border);border-radius:6px;background:#0a0f14;display:block;}
+.rr{display:flex;gap:7px;}
+.rd{flex:1;background:#0a0f14;border:1px solid var(--border);border-radius:5px;padding:5px 7px;}
+.rl{font-size:.54rem;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;}
+.rv{font-size:.78rem;color:var(--txt);margin-top:1px;}
+button.tb{background:#21262d;border:1px solid var(--border);color:var(--dim);
+  border-radius:4px;padding:3px 9px;font-size:.6rem;letter-spacing:.06em;transition:all .15s;}
+button.tb:hover{border-color:var(--acc);color:var(--txt);}
+button.tb.on{background:#1c3a5e;border-color:var(--acc);color:var(--acc);}
+button.tb.pr.on{background:rgba(255,149,0,.1);border-color:var(--prc);color:var(--prc);}
+.ds{width:100%;max-width:960px;background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;padding:11px 15px;}
+.dh{font-size:.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;}
+#dc{width:100%;border:1px solid var(--border);border-radius:5px;background:#0a0f14;display:block;}
+.eq-row{display:flex;gap:10px;width:100%;max-width:960px;flex-wrap:wrap;}
+.eq-box{flex:1;min-width:190px;background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:10px 13px;}
+.eq-box h3{font-size:.58rem;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;}
+.eq{font-size:.74rem;color:var(--acc);line-height:1.8;}
+.eq .hi{color:var(--prc);}
+.eq .dm{color:var(--dim);font-size:.62rem;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Κλεψύδρα — Βήμα 2</h1>
+  <p>Ορθογώνιο δοχείο (Torricelli) &nbsp;vs&nbsp; Κωνικό δοχείο (μεταβλητή διατομή)</p>
+</header>
+
+<div class="bar">
+  <div class="cg">
+    <button class="ib" id="bPlay">▶</button>
+    <button class="ib" id="bReset">↺</button>
+  </div>
+  <div class="dv"></div>
+  <div class="cg">
+    <span class="cl">Ταχ.</span>
+    <button class="ib" id="bSlow">−</button>
+    <span class="spd" id="bSpd">2×</span>
+    <button class="ib" id="bFast">+</button>
+  </div>
+  <div class="dv"></div>
+  <div class="cg">
+    <button class="ib on" id="bDiag">📊</button>
+    <button class="ib" id="bEq">∑</button>
+  </div>
+  <div class="dv"></div>
+  <div class="cg">
+    <span class="cl">Υλικό</span>
+    <button class="ib on" id="bWater" onclick="setFluid('water')" title="Νερό">💧</button>
+    <button class="ib" id="bSand" onclick="setFluid('sand')" title="Άμμος">🟤</button>
+  </div>
+</div>
+
+<div class="panels">
+  <!-- LEFT: Rectangular (switchable) -->
+  <div class="sp" id="leftPanel">
+    <div class="ph">
+      <span class="pt">Ορθογώνιο</span>
+      <span class="pb bp" id="rModeBadge">Bernoulli / Torricelli</span>
+    </div>
+    <canvas id="cR" width="380" height="420"></canvas>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="tb on" id="bRMode" onclick="togRMode()">⇄ Bernoulli</button>
+      <button class="tb pr" id="bRPrs" onclick="togPrs('R')">⊙ Πίεση λαιμού</button>
+    </div>
+    <div class="rr">
+      <div class="rd"><div class="rl">Στάθμη πάνω</div><div class="rv" id="rH1">—</div></div>
+      <div class="rd"><div class="rl">Στάθμη κάτω</div><div class="rv" id="rH2">—</div></div>
+      <div class="rd"><div class="rl">v λαιμού</div><div class="rv" id="rV">—</div></div>
+    </div>
+  </div>
+  <!-- RIGHT: Conical (variable cross-section) -->
+  <div class="sp">
+    <div class="ph">
+      <span class="pt">Κωνικό</span>
+      <span class="pb bc">A(h) μεταβλητή</span>
+    </div>
+    <canvas id="cC" width="380" height="420"></canvas>
+    <div style="display:flex;gap:6px;">
+      <button class="tb pr" id="bCPrs" onclick="togPrs('C')">⊙ Πίεση λαιμού</button>
+    </div>
+    <div class="rr">
+      <div class="rd"><div class="rl">Στάθμη πάνω</div><div class="rv" id="cH1">—</div></div>
+      <div class="rd"><div class="rl">Στάθμη κάτω</div><div class="rv" id="cH2">—</div></div>
+      <div class="rd"><div class="rl">v λαιμού</div><div class="rv" id="cV">—</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ds" id="dSec">
+  <div class="dh">Στάθμη άνω δοχείου ως προς χρόνο</div>
+  <canvas id="dc" width="880" height="440"></canvas>
+</div>
+
+<div class="eq-row" id="eqSec" style="display:none">
+  <div class="eq-box">
+    <h3>Ορθογώνιο — Torricelli</h3>
+    <div class="eq">
+      v = C<sub>d</sub>√(2gh)<br>
+      A·dh/dt = −C<sub>d</sub>·A<sub>n</sub>·√(2gh)<br>
+      <span class="dm">→ dh/dt = −const·√h</span><br>
+      <span class="hi">P = ρgh</span>
+    </div>
+  </div>
+  <div class="eq-box">
+    <h3>Κωνικό — μεταβλητή A(h)</h3>
+    <div class="eq">
+      v = C<sub>d</sub>√(2gh)<br>
+      A(h)·dh/dt = −C<sub>d</sub>·A<sub>n</sub>·√(2gh)<br>
+      <span class="dm">A(h) = π·[r<sub>bot</sub> + (r<sub>top</sub>−r<sub>bot</sub>)·h/H]²</span><br>
+      <span class="dm">→ dh/dt αργεί όταν A(h) μεγάλο</span><br>
+      <span class="hi">P = ρgh</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const DT    = 1/60;
+const Cd    = 0.62;
+const H0    = 0.85;
+const G_N   = 2.2;
+const ANECK  = 0.1;       // neck/rect ratio (rect tank)
+const ALPHA_H = 370/306;   // hourglass width / rect width
+const ANECK_H = 0.1*(306/370); // same physical neck for hourglass
+
+// Hourglass: w(t) = R_NECK + (1-R_NECK)*(1-(1-t)^K)
+// t=0=neck (narrow), t=1=top (full width). K=4: stays wide, curves sharply near neck.
+const R_NECK  = 0.10;   // neckHW/tankHW = (nW/2)/(tW/2) = 1/10
+const K_CURVE = 4;
+
+function hourW(t) {
+  const tc=Math.max(0,Math.min(1,t));
+  return R_NECK + (1.0-R_NECK)*(1-Math.pow(1-tc,K_CURVE));
+}
+
+function hourArea(h){const w=hourW(h);return w*w;}
+function V_hour(h){if(h<=0)return 0;const N=200,dh=h/N;let v=0;for(let i=0;i<N;i++)v+=hourArea((i+.5)*dh)*dh;return v;}
+function h_from_V_hour(V){if(V<=0)return 0;let lo=0,hi=1.2;for(let i=0;i<50;i++){const m=(lo+hi)/2;V_hour(m)<V?lo=m:hi=m;}return(lo+hi)/2;}
+
+// Both tanks start with same VOLUME = H0 (rect unit volume)
+// Rect:  h_rect_init = H0  (trivial)
+
+const Q_IDEAL = Cd * ANECK * Math.sqrt(2 * G_N * H0);  // ideal water: initial Torricelli
+const Q_SAND  = Q_IDEAL * 0.75;  // sand (Beverloo): truly constant, no h-dependence
+const V_RECT_0  = H0;              // rect initial volume
+const V_HOUR_0  = V_hour(H0);  // start at same visual height H0
+const H_CONE_0  = H0;             // both start at same visual height H0
+
+// State: volumes (not heights) for both tanks
+let rVol, rVbot, cVol, cVbot;
+let rJetY, cJetY;
+let hR = [], hC = [], hT = [];
+
+function initVols() {
+  rVol  = V_RECT_0; rVbot = 0;
+  cVol  = V_HOUR_0; cVbot = 0;
+  rJetY = -1; cJetY = -1;
+}
+
+const S = { run:false, spd:2, t:0, showDiag:true, showEq:false, showPrsR:false, showPrsC:false, rBernoulli:true, fluid:'water' };
+
+function init() {
+  initVols();
+  S.t = 0; hR = [H0]; hC = [H0]; hT = [0];
+}
+init();
+
+function stepR(dt) {
+  if (rVol <= 0) return;
+  const h  = rVol;
+  const dV = S.rBernoulli
+    ? Cd * ANECK * Math.sqrt(2*G_N*h) * dt * S.spd  // Torricelli
+    : Q_IDEAL * dt * S.spd;                           // ideal constant
+  rVol  = Math.max(0, rVol - dV);
+  rVbot = Math.min(2, rVbot + dV);
+  if (rJetY < 0) rJetY = 0;
+  rJetY = Math.min(1, rJetY + dt * S.spd * 2.5);
+}
+
+function stepC(dt) {
+  if (cVol <= 0) return;
+  let dV;
+  if (S.fluid === 'sand') {
+    dV = Q_SAND * (ANECK_H/ANECK) * dt * S.spd;  // constant Beverloo
+  } else {
+    const h = h_from_V_hour(cVol);
+    const v = Cd * Math.sqrt(2 * G_N * h);
+    dV = ANECK_H * v * dt * S.spd;               // Torricelli
+  }
+  cVol  = Math.max(0, cVol - dV);
+  cVbot = Math.min(2, cVbot + dV);
+  if (cJetY < 0) cJetY = 0;
+  cJetY = Math.min(1, cJetY + dt * S.spd * 2.5);
+}
+
+// ── Canvas refs ──
+const cR  = document.getElementById('cR');
+const cC  = document.getElementById('cC');
+const xR  = cR.getContext('2d');
+const xC  = cC.getContext('2d');
+const cD  = document.getElementById('dc');
+const xD  = cD.getContext('2d');
+
+const WB  = 'rgba(59,158,221,';
+const WL  = 'rgba(107,191,238,';
+
+// ── Draw rectangular sim ──
+function drawRect(ctx, CW, CH, h1, h2, showPrs, jetFrac) {
+  ctx.clearRect(0, 0, CW, CH);
+
+  const pX=37, pT=22, pB=10;  // narrower to match hourglass volume
+  const tW=CW-2*pX;
+  const nW=Math.max(8, Math.round(tW/10));
+  const nH=36;
+  const rH=(CH-pT-pB-nH)/2;
+
+  const tRT=pT, tRB=tRT+rH;
+  const nT=tRB, nB=nT+nH;
+  const bRT=nB, bRB=bRT+rH;
+  const nX=pX+(tW-nW)/2, nCX=pX+tW/2;
+
+  const wH1=rH*Math.min(h1,1), wY1=tRB-wH1;
+  const wH2=rH*Math.min(h2,1), wY2=bRB-wH2;
+
+  const isSand = S.fluid==='sand';
+  const FC  = isSand ? 'rgba(158,138,100,0.85)' : WB+'0.83)';
+  const FC2 = isSand ? 'rgba(158,138,100,0.85)' : WB+'0.78)';
+  // Top tank water
+  if (h1>0.002) {
+    ctx.fillStyle=FC; ctx.fillRect(pX, wY1, tW, wH1);
+    if(!isSand){
+      const sg=ctx.createLinearGradient(0,wY1,0,wY1+7);
+      sg.addColorStop(0,WL+'0.6)'); sg.addColorStop(1,WB+'0)');
+      ctx.fillStyle=sg; ctx.fillRect(pX,wY1,tW,7);
+    }
+    ctx.fillStyle=FC; ctx.fillRect(nX, nT, nW, nH);
+  }
+  // Falling column
+  if (h1>0.002 && jetFrac>=0) {
+    const jY=nB+jetFrac*(bRB-nB);
+    const cBot=Math.min(jY, bRB-wH2);
+    if (cBot>nB) { ctx.fillStyle=FC2; ctx.fillRect(nX,nB,nW,cBot-nB); }
+  }
+  // Bottom tank
+  if (wH2>0) {
+    ctx.fillStyle=FC; ctx.fillRect(pX,wY2,tW,wH2);
+    if(wH2>3 && !isSand){
+      const sg2=ctx.createLinearGradient(0,wY2,0,wY2+7);
+      sg2.addColorStop(0,WL+'0.55)'); sg2.addColorStop(1,WB+'0)');
+      ctx.fillStyle=sg2; ctx.fillRect(pX,wY2,tW,7);
+    }
+  }
+  // Walls
+  ctx.strokeStyle='#3d4a5a'; ctx.lineWidth=1.8; ctx.lineJoin='miter';
+  ctx.beginPath();
+  ctx.moveTo(pX,tRT); ctx.lineTo(pX+tW,tRT);
+  ctx.moveTo(pX,tRT); ctx.lineTo(pX,tRB);
+  ctx.moveTo(pX+tW,tRT); ctx.lineTo(pX+tW,tRB);
+  ctx.moveTo(pX,tRB); ctx.lineTo(nX,tRB);
+  ctx.moveTo(nX+nW,tRB); ctx.lineTo(pX+tW,tRB);
+  ctx.moveTo(nX,nT); ctx.lineTo(nX,nB);
+  ctx.moveTo(nX+nW,nT); ctx.lineTo(nX+nW,nB);
+  ctx.moveTo(pX,bRT); ctx.lineTo(nX,bRT);
+  ctx.moveTo(nX+nW,bRT); ctx.lineTo(pX+tW,bRT);
+  ctx.moveTo(pX,bRT); ctx.lineTo(pX,bRB);
+  ctx.moveTo(pX+tW,bRT); ctx.lineTo(pX+tW,bRB);
+  ctx.moveTo(pX,bRB); ctx.lineTo(pX+tW,bRB);
+  ctx.stroke();
+
+  // Pressure
+  if (showPrs && h1>0.01) drawPressure(ctx, nX, nW, nCX, nT, nB, h1);
+
+  // Labels
+  ctx.fillStyle='#55667a'; ctx.font='10px Courier New'; ctx.textAlign='left';
+  if (wH1>8) ctx.fillText('h₁',pX+tW+4,wY1+wH1/2+4);
+  if (wH2>8) ctx.fillText('h₂',pX+tW+4,wY2+wH2/2+4);
+}
+
+// ── Draw hourglass sim ──
+function drawConic(ctx, CW, CH, h1, h2, showPrs, jetFrac) {
+  ctx.clearRect(0,0,CW,CH);
+
+  const pX=5, pT=22, pB=10;  // wider tank for equal volume
+  const tW=CW-2*pX;
+  const nW=Math.max(8,Math.round(tW*(306/370)/10));  // same physical neck as rect
+  const nH=36;
+  const rH=(CH-pT-pB-nH)/2;
+  const tRT=pT, tRB=tRT+rH;
+  const nT=tRB, nB=nT+nH;
+  const bRT=nB, bRB=bRT+rH;
+  const nX=pX+(tW-nW)/2, nCX=pX+tW/2;
+
+  // Wall half-width in pixels at fraction t of tank height (t=0=neck, t=1=top)
+  // hourW(t)=R_NECK+(1-R_NECK)*(1-(1-t)^K): at t=0 → R_NECK = 0.10 = nW/2/(tW/2) ✓
+  function wallHW(t){ return hourW(Math.max(0,Math.min(1,t))) * (tW/2); }
+
+  // Build wall polyline from t=0 (tRB) to t=1 (tRT), N+1 points
+  const N=60;
+  const lPts=[], rPts=[];
+  for(let i=0;i<=N;i++){
+    const t=i/N;
+    const y=tRB-t*rH;
+    const hw=wallHW(t);
+    lPts.push([nCX-hw, y]);
+    rPts.push([nCX+hw, y]);
+  }
+  // lPts[0]=(nCX-R_NECK*tW/2, tRB) = (nX, tRB) ← exact neck connection
+  // lPts[N]=(nCX-tW/2, tRT) = (pX, tRT)
+
+  const h1c=Math.max(0,Math.min(h1,1.0));
+  const wH1=rH*h1c, wY1=tRB-wH1;
+  const wH2=rH*Math.min(h2,1), wY2=bRB-wH2;
+
+  const isSand=S.fluid==='sand';
+  const FC =isSand?'rgba(158,138,100,0.85)':WB+'0.83)';
+  const FC2=isSand?'rgba(180,158,110,0.8)':WB+'0.78)';
+
+  // ── Fluid: polygon following curved walls from surface down to neck ──
+  if(h1>0.002){
+    // Index of wall point just at or above water surface
+    const cutIdx=Math.round(h1c*N);
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0,tRT,CW,rH+1); ctx.clip();  // clip to tank region
+
+    // Water polygon: surface → right wall down → neck bottom → left wall up
+    ctx.beginPath();
+    // Surface line (at wY1, width = wallHW(h1c)*2)
+    const sHW=wallHW(h1c);
+    ctx.moveTo(nCX-sHW, wY1);
+    ctx.lineTo(nCX+sHW, wY1);
+    // Right wall from surface down to i=0 (tRB)
+    for(let i=cutIdx;i>=0;i--) ctx.lineTo(rPts[i][0],rPts[i][1]);
+    // Neck bottom (rPts[0] = nX+nW,tRB)
+    ctx.lineTo(nX+nW, tRB); ctx.lineTo(nX, tRB);
+    // Left wall from i=0 up to surface
+    for(let i=0;i<=cutIdx;i++) ctx.lineTo(lPts[i][0],lPts[i][1]);
+    ctx.closePath();
+    ctx.fillStyle=FC; ctx.fill();
+    ctx.restore();
+
+    // Shimmer on water surface
+    if(!isSand && sHW>2){
+      const sg=ctx.createLinearGradient(0,wY1,0,wY1+7);
+      sg.addColorStop(0,WL+'0.6)'); sg.addColorStop(1,WB+'0)');
+      ctx.save();
+      ctx.beginPath(); ctx.rect(nCX-sHW,wY1,sHW*2,7); ctx.clip();
+      ctx.fillStyle=sg; ctx.fillRect(nCX-sHW,wY1,sHW*2,7);
+      ctx.restore();
+    }
+
+    // Neck full when h1>0
+    ctx.fillStyle=FC; ctx.fillRect(nX,nT,nW,nH);
+  }
+
+  // Falling column below neck
+  if(h1>0.002 && jetFrac>=0){
+    const jY=nB+jetFrac*(bRB-nB);
+    const cBot=Math.min(jY,bRB-wH2);
+    if(cBot>nB){ctx.fillStyle=FC2; ctx.fillRect(nX,nB,nW,cBot-nB);}
+  }
+
+  // Bottom tank — mirrored hourglass shape (wide at bottom, narrows at top toward neck)
+  // s(t) at distance t from BOTTOM of bottom tank (t=0=bRB, t=1=bRT=nB)
+  // Mirror of top: wide at bottom, narrow at top → same hourW profile
+  if(wH2>0){
+    const h2c=Math.min(h2,1.0);
+    const bLPts=[], bRPts=[];
+    // Bottom tank: INVERTED hourglass — wide at bottom (bRB), narrows at top (bRT→neck)
+    // tb=0=bRB(wide bottom), tb=1=bRT(narrow top connecting to neck)
+    // Use wallHW(1-tb): at tb=0 → wallHW(1)=tW/2 (wide), at tb=1 → wallHW(0)=nW/2 (narrow)
+    for(let i=0;i<=N;i++){
+      const tb=i/N;
+      const y=bRB-tb*rH;
+      const hw=wallHW(1-tb);  // INVERTED: wide at bottom, narrow at top
+      bLPts.push([nCX-hw,y]);
+      bRPts.push([nCX+hw,y]);
+    }
+    // Water surface at wY2, half-width = wallHW(1-h2c)
+    const surfHW2 = wallHW(1-h2c);
+    const bCutIdx=Math.round(h2c*N);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0,bRT,CW,rH+1); ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(nCX-surfHW2, wY2);
+    ctx.lineTo(nCX+surfHW2, wY2);
+    for(let i=bCutIdx;i>=0;i--) ctx.lineTo(bRPts[i][0],bRPts[i][1]);
+    ctx.lineTo(bLPts[0][0],bRPts[0][1]);  // bottom edge
+    for(let i=0;i<=bCutIdx;i++) ctx.lineTo(bLPts[i][0],bLPts[i][1]);
+    ctx.closePath();
+    ctx.fillStyle=FC; ctx.fill();
+    ctx.restore();
+    if(!isSand && wH2>3){
+      const sg2=ctx.createLinearGradient(0,wY2,0,wY2+7);
+      sg2.addColorStop(0,WL+'0.55)'); sg2.addColorStop(1,WB+'0)');
+      ctx.save();
+      ctx.beginPath(); ctx.rect(nCX-surfHW2,wY2,surfHW2*2,7); ctx.clip();
+      ctx.fillStyle=sg2; ctx.fillRect(nCX-surfHW2,wY2,surfHW2*2,7);
+      ctx.restore();
+    }
+  }
+
+  // ── Walls ──
+  ctx.lineJoin='round'; ctx.lineWidth=1.8; ctx.strokeStyle='#3d4a5a';
+
+  // Build bottom wall points: INVERTED — wide at bottom, narrow at top
+  const bLPts=[], bRPts=[];
+  for(let i=0;i<=N;i++){
+    const tb=i/N;
+    const y=bRB-tb*rH;
+    const hw=wallHW(1-tb);  // inverted
+    bLPts.push([nCX-hw,y]);
+    bRPts.push([nCX+hw,y]);
+  }
+
+  // Top curved wall (top tank)
+  ctx.beginPath(); ctx.moveTo(lPts[N][0],tRT); ctx.lineTo(rPts[N][0],tRT); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(lPts[N][0],lPts[N][1]);
+  for(let i=N-1;i>=0;i--) ctx.lineTo(lPts[i][0],lPts[i][1]); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(rPts[N][0],rPts[N][1]);
+  for(let i=N-1;i>=0;i--) ctx.lineTo(rPts[i][0],rPts[i][1]); ctx.stroke();
+
+  // Neck sides
+  ctx.beginPath();
+  ctx.moveTo(nX,   nT); ctx.lineTo(nX,   nB);
+  ctx.moveTo(nX+nW,nT); ctx.lineTo(nX+nW,nB);
+  ctx.stroke();
+
+  // Bottom curved wall: wide at bottom (bLPts[0]), narrows at top (bLPts[N]→neck)
+  ctx.beginPath(); ctx.moveTo(bLPts[0][0],bRB); ctx.lineTo(bRPts[0][0],bRB); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bLPts[0][0],bLPts[0][1]);
+  for(let i=1;i<=N;i++) ctx.lineTo(bLPts[i][0],bLPts[i][1]); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bRPts[0][0],bRPts[0][1]);
+  for(let i=1;i<=N;i++) ctx.lineTo(bRPts[i][0],bRPts[i][1]); ctx.stroke();
+
+  if(showPrs&&h1>0.01) drawPressure(ctx,nX,nW,nCX,nT,nB,h1);
+
+  ctx.fillStyle='#55667a'; ctx.font='10px Courier New'; ctx.textAlign='left';
+  if(wH1>8) ctx.fillText('h₁',nX+nW+4,wY1+wH1/2+4);
+  if(wH2>8) ctx.fillText('h₂',pX+tW+4,wY2+wH2/2+4);
+}
+
+// ── Shared pressure indicator ──
+function drawPressure(ctx, nX, nW, nCX, nT, nB, h1) {
+  const cy  = (nT+nB)/2;
+  const lx  = nX+nW+10;
+  const al  = Math.min(1, h1*1.6);
+  const pval= (h1/H0*100).toFixed(0);
+  ctx.beginPath();
+  ctx.moveTo(nX+nW, cy); ctx.lineTo(lx-3, cy);
+  ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.textAlign='left';
+  ctx.font='bold 11px Courier New';
+  ctx.fillStyle='rgba(255,255,255,0.95)';
+  ctx.fillText('P = ρg·h₁', lx, cy-6);
+  ctx.font='11px Courier New';
+  ctx.fillStyle='rgba(255,255,255,0.88)';
+  ctx.fillText(`  = ${pval}% · ρg`, lx, cy+9);
+}
+
+// ── Diagram ──
+function drawDiag() {
+  const W=cD.width, H=cD.height;
+  xD.clearRect(0,0,W,H);
+  const px=46,py=14,pw=W-px-18,ph=H-py-26;
+  xD.strokeStyle='#1e2733'; xD.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=py+ph*(1-i/4);
+    xD.beginPath(); xD.moveTo(px,y); xD.lineTo(px+pw,y); xD.stroke();
+    xD.fillStyle='#4a5568'; xD.font='9px Courier New';
+    xD.fillText((i*25)+'%',2,y+4);
+  }
+  xD.strokeStyle='#3d4a5a'; xD.lineWidth=1.5;
+  xD.beginPath(); xD.moveTo(px,py); xD.lineTo(px,py+ph); xD.lineTo(px+pw,py+ph); xD.stroke();
+  xD.fillStyle='#7d8590'; xD.font='9px Courier New';
+  xD.fillText('h₁',1,py+6); xD.fillText('t →',px+pw-18,py+ph+13);
+  if(hT.length<2) return;
+  const tMax=Math.max(hT[hT.length-1],0.01);
+  function pl(h,c){
+    xD.beginPath(); xD.strokeStyle=c; xD.lineWidth=2;
+    for(let i=0;i<h.length;i++){
+      const x=px+(hT[i]/tMax)*pw, y=py+ph*(1-h[i]/H_CONE_0);
+      i===0?xD.moveTo(x,y):xD.lineTo(x,y);
+    }
+    xD.stroke();
+  }
+  if(S.fluid==='sand'){
+    pl(hC,'#c8a87a');
+    xD.fillStyle='#c8a87a'; xD.fillRect(px+pw-110,py+4,12,3);
+    xD.fillStyle='#7d8590'; xD.font='8px Courier New'; xD.fillText('Κωνικό (σταθ. Q)',px+pw-95,py+8);
+  } else {
+    pl(hR,'#58a6ff');
+    pl(hC,'#ff9500');
+    xD.fillStyle='#58a6ff'; xD.fillRect(px+pw-110,py+4,12,3);
+    xD.fillStyle='#7d8590'; xD.font='8px Courier New'; xD.fillText('Ορθογώνιο',px+pw-95,py+8);
+    xD.fillStyle='#ff9500'; xD.fillRect(px+pw-110,py+14,12,3);
+    xD.fillStyle='#7d8590'; xD.fillText('Κωνικό',px+pw-95,py+18);
+  }
+}
+
+// ── Loop ──
+let smpl=0;
+function loop(){
+  requestAnimationFrame(loop);
+  if(S.run){
+    const dt=DT;
+    S.t+=dt*S.spd; stepR(dt); stepC(dt);
+    smpl+=dt;
+    if(smpl>0.1){
+      smpl=0;
+      hR.push(rVol); hC.push(h_from_V_hour(cVol)); hT.push(S.t);
+      if(hR.length>500){hR.shift();hC.shift();hT.shift();}
+    }
+  }
+  const CW=cR.width, CH=cR.height;
+  const hR_cur = rVol;                    // rect: h = V
+  const hC_cur = h_from_V_hour(cVol);    // hourglass: h from V
+  const hR_bot = Math.min(rVbot, 1);
+  const hC_bot = h_from_V_hour(cVbot);
+  drawRect(xR,CW,CH,hR_cur,hR_bot,S.showPrsR,rJetY);
+  drawConic(xC,CW,CH,hC_cur,hC_bot,S.showPrsC,cJetY);
+
+  const vR=(Cd*Math.sqrt(2*G_N*Math.max(0,hR_cur))).toFixed(3);
+  const vC=(Cd*Math.sqrt(2*G_N*Math.max(0,hC_cur))).toFixed(3);
+  document.getElementById('rH1').textContent=(hR_cur/H0*100).toFixed(1)+'%';
+  document.getElementById('rH2').textContent=(hR_bot/H0*100).toFixed(1)+'%';
+  document.getElementById('rV').textContent = S.rBernoulli ? '≈'+vR : 'σταθ.';
+  document.getElementById('cH1').textContent=(hC_cur/H_CONE_0*100).toFixed(1)+'%';
+  document.getElementById('cH2').textContent=(h_from_V_hour(cVbot)/H0*100).toFixed(1)+'%';
+  document.getElementById('cV').textContent='≈'+vC;
+
+  if(S.showDiag) drawDiag();
+  if(rVol<=0&&cVol<=0&&S.run){S.run=false;document.getElementById('bPlay').textContent='▶';}
+}
+requestAnimationFrame(loop);
+
+// ── Controls ──
+document.getElementById('bPlay').addEventListener('click',()=>{
+  S.run=!S.run;
+  document.getElementById('bPlay').textContent=S.run?'⏸':'▶';
+});
+document.getElementById('bReset').addEventListener('click',()=>{
+  init(); S.run=false;
+  document.getElementById('bPlay').textContent='▶';
+});
+const SPDS=[0.5,1,2,3,5]; let si=2;
+function updSpd(){S.spd=SPDS[si];document.getElementById('bSpd').textContent=SPDS[si]+'×';}
+document.getElementById('bFast').addEventListener('click',()=>{if(si<SPDS.length-1){si++;updSpd();}});
+document.getElementById('bSlow').addEventListener('click',()=>{if(si>0){si--;updSpd();}});
+document.getElementById('bDiag').addEventListener('click',()=>{
+  S.showDiag=!S.showDiag;
+  document.getElementById('dSec').style.display=S.showDiag?'':'none';
+  document.getElementById('bDiag').classList.toggle('on',S.showDiag);
+});
+document.getElementById('bEq').addEventListener('click',()=>{
+  S.showEq=!S.showEq;
+  document.getElementById('eqSec').style.display=S.showEq?'':'none';
+  document.getElementById('bEq').classList.toggle('on',S.showEq);
+});
+function togRMode(){
+  S.rBernoulli = !S.rBernoulli;
+  const btn   = document.getElementById('bRMode');
+  const badge = document.getElementById('rModeBadge');
+  if(S.rBernoulli){
+    btn.textContent   = '⇄ Bernoulli';
+    btn.classList.add('on');
+    badge.textContent = 'Bernoulli / Torricelli';
+    badge.className   = 'pb bp';
+  } else {
+    btn.textContent   = '⇄ Ιδανική';
+    btn.classList.remove('on');
+    badge.textContent = 'Ιδανική (v = σταθ.)';
+    badge.className   = 'pb bi';
+  }
+  // reset so comparison is fair
+  init(); S.run=false;
+  document.getElementById('bPlay').textContent='▶';
+}
+
+function setFluid(f){
+  S.fluid = f;
+  document.getElementById('bWater').classList.toggle('on', f==='water');
+  document.getElementById('bSand').classList.toggle('on',  f==='sand');
+  // Sand: single window (hourglass only, constant Q)
+  const showLeft = f !== 'sand';
+  document.getElementById('leftPanel').style.display = showLeft ? '' : 'none';
+  document.getElementById('bRMode').style.display    = showLeft ? '' : 'none';
+  init(); S.run=false;
+  document.getElementById('bPlay').textContent='▶';
+}
+
+function togPrs(panel){
+  if(panel==='R'){
+    S.showPrsR=!S.showPrsR;
+    document.getElementById('bRPrs').classList.toggle('on',S.showPrsR);
+  } else {
+    S.showPrsC=!S.showPrsC;
+    document.getElementById('bCPrs').classList.toggle('on',S.showPrsC);
+  }
+}
+</script>
+</body>
+</html>
