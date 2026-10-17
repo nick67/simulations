@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Απλό εκκρεμές</title>
+<style>
+:root {
+  --bg: #f4f6fa;
+  --panel: #ffffff;
+  --panel-edge: #d8dee9;
+  --panel-inner: #eef2f7;
+  --text: #1f2937;
+  --muted: #5b6578;
+  --accent: #0d9488;
+  --accent-text: #ffffff;
+  --warm: #ea580c;
+  --rod: #475569;
+  --grid: #cbd5e1;
+  --support: #334155;
+  --stage: #f8fafc;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+#frame {
+  position: relative;
+  padding: 0;
+}
+.stage-scaler {
+  width: 860px;
+  transform-origin: 0 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+header { padding: 14px 12px 4px; }
+.fullscreen-button {
+  float: right;
+  margin-top: -4px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+h1 { margin: 0; font-size: 22px; font-weight: 600; }
+.subtitle { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+.layout {
+  display: grid;
+  grid-template-columns: 520px 300px;
+  gap: 16px;
+  padding: 12px;
+  height: 540px;
+  align-items: stretch;
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.stage {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  min-height: 0;
+}
+.stage canvas {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: block;
+  border-radius: 6px;
+  background: var(--stage);
+}
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+.controls .params { flex: 1; display: flex; flex-direction: column; }
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+.timer {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 30px;
+  color: var(--accent);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 0 8px;
+}
+.control-row { margin-bottom: 12px; }
+.control-row:last-child { margin-bottom: 0; }
+.control-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.vertical-sliders {
+  display: flex;
+  justify-content: space-around;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.vslider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.vslider output {
+  font-family: ui-monospace, Consolas, monospace;
+  color: var(--accent);
+  font-weight: 600;
+}
+.vslider input[type="range"] {
+  -webkit-appearance: slider-vertical;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 28px;
+  height: 120px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.segmented {
+  display: flex;
+  border: 1px solid var(--panel-edge);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.segmented button {
+  flex: 1;
+  background: var(--panel);
+  color: var(--muted);
+  border: 0;
+  padding: 7px 4px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.segmented button + button { border-left: 1px solid var(--panel-edge); }
+.segmented button.active {
+  background: var(--panel-inner);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: inset 0 -3px 0 var(--accent);
+}
+.buttons { display: flex; gap: 8px; }
+.buttons button {
+  flex: 1;
+  padding: 9px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel-inner);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.buttons button.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.hint { font-size: 12px; color: var(--muted); margin: auto 0 0; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div class="stage-scaler" id="scaler">
+    <header>
+      <button id="fullscreenButton" class="fullscreen-button">⛶ Πλήρης οθόνη</button>
+      <h1>Απλό εκκρεμές</h1>
+      <p class="subtitle">Μεταβάλλοντας το μήκος και τη γωνία εκτροπής, και επιλέγοντας το περιβάλλον, παρατηρούμε πώς κινείται το εκκρεμές.</p>
+    </header>
+
+    <main class="layout">
+      <section class="panel stage">
+        <canvas id="stageCanvas"></canvas>
+      </section>
+
+      <aside class="controls">
+        <section class="panel">
+          <h2>Χρονόμετρο</h2>
+          <div class="timer" id="timerDisplay">00:00,00</div>
+          <div class="buttons">
+            <button id="playButton" class="primary">▶ Έναρξη</button>
+            <button id="resetButton">↺ Επαναφορά</button>
+          </div>
+        </section>
+
+        <section class="panel params">
+          <h2>Παράμετροι</h2>
+
+          <div class="vertical-sliders">
+            <div class="vslider">
+              <output id="lengthValue">0,50 m</output>
+              <input type="range" id="lengthSlider" min="0.2" max="1" step="0.01" value="0.5">
+              <span>Μήκος L</span>
+            </div>
+            <div class="vslider">
+              <output id="angleValue">30°</output>
+              <input type="range" id="angleSlider" min="5" max="90" step="1" value="30">
+              <span>Γωνία θ₀</span>
+            </div>
+          </div>
+
+          <div class="control-row">
+            <div class="control-label"><span>Περιβάλλον</span></div>
+            <div class="segmented">
+              <button data-environment="earth" class="active">Γη</button>
+              <button data-environment="moon">Σελήνη</button>
+              <button data-environment="weightless">Χωρίς βαρύτητα</button>
+            </div>
+          </div>
+
+          <p class="hint">Η αλλαγή μήκους, γωνίας ή περιβάλλοντος επαναφέρει την προσομοίωση.</p>
+        </section>
+      </aside>
+    </main>
+  </div>
+</div>
+
+<script>
+const ENVIRONMENTS = {
+  earth: { label: "Γη", gravity: 9.81 },
+  moon: { label: "Σελήνη", gravity: 1.62 },
+  weightless: { label: "Χωρίς βαρύτητα", gravity: 0 }
+};
+
+const COLORS = {
+  text: "#1f2937",
+  muted: "#5b6578",
+  accent: "#0d9488",
+  warm: "#ea580c",
+  rod: "#475569",
+  grid: "#cbd5e1",
+  support: "#334155",
+  stage: "#f8fafc"
+};
+
+const FIXED_STEP_SECONDS = 1 / 500;
+const MAX_LENGTH_METERS = 1.0;
+const BOB_RADIUS_PIXELS = 8;
+const DESIGN_WIDTH_PIXELS = 860;
+const MIN_SCALE = 0.6;
+const MAX_SCALE = 1.3;
+const FULLSCREEN_MAX_SCALE = 2.2;
+
+const settings = {
+  length: 0.5,
+  startAngleDegrees: 30,
+  environment: "earth"
+};
+
+let motion = null;
+let running = false;
+let pendingSimulatedTime = 0;
+let lastFrameTimestamp = 0;
+
+const stageCanvas = document.getElementById("stageCanvas");
+const scaler = document.getElementById("scaler");
+const frame = document.getElementById("frame");
+const timerDisplay = document.getElementById("timerDisplay");
+const playButton = document.getElementById("playButton");
+const resetButton = document.getElementById("resetButton");
+const lengthSlider = document.getElementById("lengthSlider");
+const angleSlider = document.getElementById("angleSlider");
+const lengthValue = document.getElementById("lengthValue");
+const angleValue = document.getElementById("angleValue");
+
+function degreesToRadians(degrees) {
+  return degrees * Math.PI / 180;
+}
+
+function radiansToDegrees(radians) {
+  return radians * 180 / Math.PI;
+}
+
+function formatDecimal(value, digits) {
+  return value.toFixed(digits).replace(".", ",");
+}
+
+function padTwo(number) {
+  return String(number).padStart(2, "0");
+}
+
+function formatTimer(seconds) {
+  const totalHundredths = Math.floor(seconds * 100);
+  const hundredths = totalHundredths % 100;
+  const totalSeconds = Math.floor(totalHundredths / 100);
+  const minutesPart = Math.floor(totalSeconds / 60);
+  const secondsPart = totalSeconds % 60;
+  return padTwo(minutesPart) + ":" + padTwo(secondsPart) + "," + padTwo(hundredths);
+}
+
+function currentGravity() {
+  return ENVIRONMENTS[settings.environment].gravity;
+}
+
+function angularAcceleration(angle) {
+  return -(currentGravity() / settings.length) * Math.sin(angle);
+}
+
+function createFreshMotion() {
+  const startAngle = degreesToRadians(settings.startAngleDegrees);
+  return {
+    angle: startAngle,
+    angularVelocity: 0,
+    elapsedTime: 0
+  };
+}
+
+function advanceOneStep(stepSize) {
+  const startAngle = motion.angle;
+  const startVelocity = motion.angularVelocity;
+
+  const firstAngleSlope = startVelocity;
+  const firstVelocitySlope = angularAcceleration(startAngle);
+  const secondAngleSlope = startVelocity + 0.5 * stepSize * firstVelocitySlope;
+  const secondVelocitySlope = angularAcceleration(startAngle + 0.5 * stepSize * firstAngleSlope);
+  const thirdAngleSlope = startVelocity + 0.5 * stepSize * secondVelocitySlope;
+  const thirdVelocitySlope = angularAcceleration(startAngle + 0.5 * stepSize * secondAngleSlope);
+  const fourthAngleSlope = startVelocity + stepSize * thirdVelocitySlope;
+  const fourthVelocitySlope = angularAcceleration(startAngle + stepSize * thirdAngleSlope);
+
+  motion.angle = startAngle + stepSize / 6 * (firstAngleSlope + 2 * secondAngleSlope + 2 * thirdAngleSlope + fourthAngleSlope);
+  motion.angularVelocity = startVelocity + stepSize / 6 * (firstVelocitySlope + 2 * secondVelocitySlope + 2 * thirdVelocitySlope + fourthVelocitySlope);
+  motion.elapsedTime += stepSize;
+}
+
+function advanceSimulation(realElapsedSeconds) {
+  pendingSimulatedTime += realElapsedSeconds;
+  while (pendingSimulatedTime >= FIXED_STEP_SECONDS) {
+    advanceOneStep(FIXED_STEP_SECONDS);
+    pendingSimulatedTime -= FIXED_STEP_SECONDS;
+  }
+}
+
+function prepareCanvas(canvas) {
+  const ratio = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const pixelWidth = Math.round(width * ratio);
+  const pixelHeight = Math.round(height * ratio);
+  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
+  }
+  const context = canvas.getContext("2d");
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  return { context: context, width: width, height: height };
+}
+
+function drawStage(view) {
+  const context = view.context;
+  const width = view.width;
+  const height = view.height;
+  context.clearRect(0, 0, width, height);
+
+  const pivotX = width / 2;
+  const pivotY = 40;
+  const reachPixels = Math.min(width * 0.42, height - 90);
+  const pixelsPerMeter = reachPixels / MAX_LENGTH_METERS;
+  const rodPixels = settings.length * pixelsPerMeter;
+  const angle = motion.angle;
+  const bobX = pivotX + rodPixels * Math.sin(angle);
+  const bobY = pivotY + rodPixels * Math.cos(angle);
+  const gravity = currentGravity();
+
+  context.setLineDash([6, 6]);
+  context.strokeStyle = COLORS.grid;
+  context.lineWidth = 1.5;
+  context.beginPath();
+  context.moveTo(pivotX, pivotY);
+  context.lineTo(pivotX, pivotY + rodPixels + 24);
+  context.stroke();
+  context.setLineDash([]);
+
+  const arcRadius = 60;
+  context.strokeStyle = COLORS.accent;
+  context.lineWidth = 2;
+  context.beginPath();
+  context.arc(pivotX, pivotY, arcRadius, Math.PI / 2, Math.PI / 2 - angle, angle > 0);
+  context.stroke();
+
+  const labelAngle = Math.PI / 2 - angle / 2;
+  context.fillStyle = COLORS.accent;
+  context.font = "15px ui-monospace, Consolas, monospace";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(
+    formatDecimal(radiansToDegrees(angle), 1) + "°",
+    pivotX + 86 * Math.cos(labelAngle),
+    pivotY + 86 * Math.sin(labelAngle)
+  );
+
+  context.fillStyle = COLORS.support;
+  context.fillRect(pivotX - 80, pivotY - 12, 160, 10);
+
+  context.strokeStyle = COLORS.rod;
+  context.lineWidth = 2.5;
+  context.beginPath();
+  context.moveTo(pivotX, pivotY);
+  context.lineTo(bobX, bobY);
+  context.stroke();
+
+  const midX = (pivotX + bobX) / 2;
+  const midY = (pivotY + bobY) / 2;
+  const perpendicularX = Math.cos(angle);
+  const perpendicularY = -Math.sin(angle);
+  context.fillStyle = COLORS.muted;
+  context.font = "13px ui-monospace, Consolas, monospace";
+  context.fillText(
+    "L = " + formatDecimal(settings.length, 2) + " m",
+    midX + perpendicularX * 26,
+    midY + perpendicularY * 26
+  );
+
+  context.beginPath();
+  context.arc(bobX, bobY, BOB_RADIUS_PIXELS, 0, 2 * Math.PI);
+  context.fillStyle = COLORS.warm;
+  context.fill();
+
+  context.beginPath();
+  context.arc(pivotX, pivotY, 4, 0, 2 * Math.PI);
+  context.fillStyle = COLORS.rod;
+  context.fill();
+
+  context.textAlign = "left";
+  context.textBaseline = "top";
+  context.fillStyle = COLORS.text;
+  context.font = "14px system-ui, -apple-system, sans-serif";
+  context.fillText(
+    ENVIRONMENTS[settings.environment].label + " · g = " + formatDecimal(gravity, 2) + " m/s²",
+    16,
+    14
+  );
+
+  if (gravity === 0) {
+    context.textAlign = "center";
+    context.textBaseline = "alphabetic";
+    context.fillStyle = COLORS.muted;
+    context.font = "14px system-ui, -apple-system, sans-serif";
+    context.fillText("Δεν υπάρχει δύναμη επαναφοράς: η σφαίρα παραμένει ακίνητη", width / 2, height - 16);
+  }
+}
+
+function resetSimulation() {
+  running = false;
+  pendingSimulatedTime = 0;
+  motion = createFreshMotion();
+  playButton.textContent = "▶ Έναρξη";
+}
+
+function setActiveButton(buttons, activeButton) {
+  for (const button of buttons) {
+    button.classList.toggle("active", button === activeButton);
+  }
+}
+
+function fitScaleToWindow() {
+  const isFullscreen = Boolean(document.fullscreenElement);
+  const widthRatio = (window.innerWidth - 8) / DESIGN_WIDTH_PIXELS;
+  const heightRatio = (window.innerHeight - 8) / scaler.offsetHeight;
+  const fittingRatio = isFullscreen ? Math.min(widthRatio, heightRatio) : widthRatio;
+  const maxScale = isFullscreen ? FULLSCREEN_MAX_SCALE : MAX_SCALE;
+  const scale = Math.min(maxScale, Math.max(MIN_SCALE, fittingRatio));
+  scaler.style.transform = "scale(" + scale + ")";
+  frame.style.width = (DESIGN_WIDTH_PIXELS * scale) + "px";
+  frame.style.height = (scaler.offsetHeight * scale) + "px";
+}
+
+lengthSlider.addEventListener("input", function () {
+  settings.length = Number(lengthSlider.value);
+  lengthValue.textContent = formatDecimal(settings.length, 2) + " m";
+  resetSimulation();
+});
+
+angleSlider.addEventListener("input", function () {
+  settings.startAngleDegrees = Number(angleSlider.value);
+  angleValue.textContent = angleSlider.value + "°";
+  resetSimulation();
+});
+
+const environmentButtons = document.querySelectorAll("[data-environment]");
+for (const button of environmentButtons) {
+  button.addEventListener("click", function () {
+    settings.environment = button.dataset.environment;
+    setActiveButton(environmentButtons, button);
+    resetSimulation();
+  });
+}
+
+playButton.addEventListener("click", function () {
+  running = !running;
+  playButton.textContent = running ? "❚❚ Παύση" : "▶ Έναρξη";
+});
+
+resetButton.addEventListener("click", resetSimulation);
+
+window.addEventListener("resize", fitScaleToWindow);
+
+const fullscreenButton = document.getElementById("fullscreenButton");
+
+fullscreenButton.addEventListener("click", function () {
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    document.documentElement.requestFullscreen();
+  }
+});
+
+document.addEventListener("fullscreenchange", function () {
+  fullscreenButton.textContent = document.fullscreenElement ? "✕ Έξοδος" : "⛶ Πλήρης οθόνη";
+  fitScaleToWindow();
+});
+
+function animationFrame(timestamp) {
+  const elapsedSeconds = lastFrameTimestamp ? Math.min((timestamp - lastFrameTimestamp) / 1000, 0.1) : 0;
+  lastFrameTimestamp = timestamp;
+  if (running) {
+    advanceSimulation(elapsedSeconds);
+  }
+  drawStage(prepareCanvas(stageCanvas));
+  timerDisplay.textContent = formatTimer(motion.elapsedTime);
+  requestAnimationFrame(animationFrame);
+}
+
+resetSimulation();
+lengthValue.textContent = formatDecimal(settings.length, 2) + " m";
+angleValue.textContent = settings.startAngleDegrees + "°";
+fitScaleToWindow();
+requestAnimationFrame(animationFrame);
+</script>
+</body>
+</html>
